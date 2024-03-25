@@ -42,13 +42,16 @@ jobs:
         with:
           node-version: '20.11.1'
 
-      - name: Install dependencies
+      - name: Install server dependencies
+        working-directory: ./server
         run: npm install
 
-      - name: Build application
+      - name: Build server application
+        working-directory: ./server
         run: npm run build
 
-      - name: Run tests
+      - name: Run server tests
+        working-directory: ./server
         run: npm test
 
       - name: Revoke the runner's access to MongoDB Atlas
