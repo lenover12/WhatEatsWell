@@ -46,13 +46,9 @@ jobs:
         working-directory: ./server
         run: npm install
 
-      - name: Build server application
+      - name: Run server tests with Ava
         working-directory: ./server
-        run: npm run build
-
-      - name: Run server tests
-        working-directory: ./server
-        run: npm test
+        run: npx ava
 
       - name: Revoke the runner's access to MongoDB Atlas
         if: always() && steps.allow-ip.outcome == 'success'
