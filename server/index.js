@@ -1,6 +1,7 @@
 import app from "./server.js";
 import mongodb from "mongodb";
 import dotenv from "dotenv";
+import AccountsDAO from "./dao/accountsDAO.js";
 
 // load environment variables from .env file
 dotenv.config();
@@ -23,7 +24,8 @@ MongoClient.connect(process.env.ACCOUNTS_DB_URI, {
     process.exit(1);
   })
   // start express server and listen
-  .then(async () => {
+  .then(async (client) => {
+    await AccountsDAO.injectDB(client);
     app.listen(port, () => {
       console.log(`listening on port ${port}`);
     });
