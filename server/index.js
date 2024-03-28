@@ -1,32 +1,23 @@
 import app from "./server.js";
-import mongodb from "mongodb";
+import mongoose from "mongoose";
 import dotenv from "dotenv";
-import AccountsDAO from "./dao/accountsDAO.js";
 
-// load environment variables from .env file
+// Load environment variables from .env file
 dotenv.config();
 
-// alias for the MongoDB client
-const MongoClient = mongodb.MongoClient;
+// Define the MongoDB URI
+const mongoURI = process.env.ACCOUNTS_DB_URI;
 
-// define the port to listen on
-const port = process.env.PORT || 8000;
-
-// connect to mongoDB database
-MongoClient.connect(process.env.ACCOUNTS_DB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  wtimeout: 2500,
-})
-  // log connection errors and close connection
-  .catch((err) => {
-    console.error(err.stack);
-    process.exit(1);
-  })
-  // start express server and listen
-  .then(async (client) => {
-    await AccountsDAO.injectDB(client);
+// Connect to MongoDB
+mongoose.connect(mongoURI)
+  .then(() => {
+    console.log("Connected to MongoDB");
+    // Start the server
+    const port = process.env.PORT || 8000;
     app.listen(port, () => {
-      console.log(`listening on port ${port}`);
+      console.log(`Server is running on port ${port}`);
     });
+  })
+  .catch((error) => {
+    console.error("Error connecting to MongoDB:", error);
   });
