@@ -1,7 +1,7 @@
 import test from "ava";
 import request from "supertest";
-import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from "mongoose";
+import { MongoMemoryServer } from "mongodb-memory-server";
 import app from "../../server.js";
 import Account from "../../models/accounts.js"; // Import the Account model
 
@@ -25,7 +25,12 @@ test.before(async () => {
       family_name: "McDonald",
       username: "leo12",
       password: "pass12",
-      premium: false
+      email: "leonard@example.com",
+      premium: false,
+      food: [],
+      weight: 75,
+      height: 180,
+      carbohydrates_serving_size: 30,
     },
     {
       _id: "6600fc77625eb7abf58c8f65",
@@ -33,8 +38,13 @@ test.before(async () => {
       family_name: "Tuna",
       username: "jord10",
       password: "pass10",
-      premium: true
-    }
+      email: "jordan@example.com",
+      premium: true,
+      food: [],
+      weight: 65,
+      height: 170,
+      carbohydrates_serving_size: 25,
+    },
   ]);
 });
 
@@ -45,22 +55,22 @@ test.after.always(async () => {
 });
 
 test("Retrieve list of accounts", async (t) => {
-  // send a GET request to the api/v1/accounts API endpoint
+  // Send a GET request to the api/v1/accounts API endpoint
   const response = await request(app).get("/api/v1/accounts");
 
-  // assert a 200 response
+  // Assert a 200 response
   t.is(response.status, 200);
 
-  // console.log(response.body);
-
-  // assert the body response contains an array of accounts
+  // Assert the body response contains an array of accounts
   t.true(Array.isArray(response.body.accounts));
   t.is(response.body.accounts.length, 2); // Check if the correct number of accounts is retrieved
 });
 
 test("Retrieve list of accounts with filters", async (t) => {
   // Send a GET request to the api/v1/accounts API endpoint with filters
-  const response = await request(app).get("/api/v1/accounts").query({ given_name: "Leonard" });
+  const response = await request(app)
+    .get("/api/v1/accounts")
+    .query({ given_name: "Leonard" });
 
   // Assert a 200 response
   t.is(response.status, 200);
@@ -74,7 +84,9 @@ test("Retrieve list of accounts with filters", async (t) => {
 });
 
 test("Invalid query parameters are removed", async (t) => {
-  const response = await request(app).get("/api/v1/accounts?invalid_filter=test");
+  const response = await request(app).get(
+    "/api/v1/accounts?invalid_filter=test"
+  );
 
   // Assert that the response status is 200 OK
   t.is(response.status, 200);

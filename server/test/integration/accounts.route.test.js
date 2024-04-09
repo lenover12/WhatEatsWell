@@ -1,6 +1,6 @@
 import test from "ava";
 import request from "supertest";
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 import app from "../../server.js";
 import dotenv from "dotenv";
 
@@ -12,8 +12,7 @@ test.before(async () => {
   const mongoURI = process.env.ACCOUNTS_DB_URI;
 
   // Connect to MongoDB
-  await mongoose.connect(mongoURI, {
-  });
+  await mongoose.connect(mongoURI, {});
 });
 
 test.after.always(async () => {

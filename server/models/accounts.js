@@ -1,16 +1,9 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+import accountsSchema from "../schema/accounts.schema.js";
 
-const { Schema } = mongoose;
+const Account = mongoose.model("Account", accountsSchema);
 
-const accountsSchema = new Schema({
-  given_name: { type: String, required: true },
-  family_name: { type: String, required: true },
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  premium: { type: Boolean, default: false },
-}, { collection: 'users' });
-
-accountsSchema.statics.getAccounts = async function ({ filters, page, accountsPerPage }) {
+Account.getAccounts = async function ({ filters, page, accountsPerPage }) {
   const query = {};
 
   // Apply filters if present
@@ -33,13 +26,10 @@ accountsSchema.statics.getAccounts = async function ({ filters, page, accountsPe
     .limit(accountsPerPage)
     .exec();
 
-
   // Count total number of accounts based on query
   const totalNumAccounts = await this.countDocuments(query);
 
   return { accountsList, totalNumAccounts };
 };
-
-const Account = mongoose.model('Account', accountsSchema);
 
 export default Account;
