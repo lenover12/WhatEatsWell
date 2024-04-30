@@ -2,17 +2,17 @@ import express from "express";
 import cors from "cors";
 import accounts from "./api/accounts.route.js";
 
-// create the express application
+// Create the express application
 const app = express();
 
-// enable cross-origin resource sharing
-// allows requests from different origins
+// Enable cross-origin resource sharing
+// Allows requests from different origins
 app.use(cors());
 
-// allows application to read JSON requests
+// Allows application to read JSON requests
 app.use(express.json());
 
-// routing
+// Routing
 app.use("/api/v1/accounts", accounts);
 app.use("*", (req, res) => res.status(404).json({ error: "not found" }));
 

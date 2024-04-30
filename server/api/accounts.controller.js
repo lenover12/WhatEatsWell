@@ -1,10 +1,13 @@
 import Accounts from "../models/accounts.js";
 
 export default class AccountsController {
+  // API endpoint handler for retrieving accounts
   static async apiGetAccounts(req, res, next) {
+    // Default pagination values
     const accountsPerPage = req.query.accountsPerPage ? parseInt(req.query.accountsPerPage, 10) : 20;
     const page = req.query.page ? parseInt(req.query.page, 10) : 0;
 
+    // Filters for query parameters
     let filters = {};
     if (req.query.given_name) {
       filters.given_name = req.query.given_name;
@@ -14,6 +17,7 @@ export default class AccountsController {
       filters.username = req.query.username;
     }
 
+    // Retrieve accounts
     try {
       const { accountsList, totalNumAccounts } = await Accounts.getAccounts({
         filters,
@@ -21,6 +25,7 @@ export default class AccountsController {
         accountsPerPage,
       });
 
+      // Prepare the response
       let response = {
         accounts: accountsList,
         page: page,
@@ -28,6 +33,7 @@ export default class AccountsController {
         entries_per_page: accountsPerPage,
         total_results: totalNumAccounts,
       };
+      // Send the response
       res.json(response);
     } catch (error) {
       next(error);

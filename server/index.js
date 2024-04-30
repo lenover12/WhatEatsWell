@@ -9,7 +9,8 @@ dotenv.config();
 const mongoURI = process.env.ACCOUNTS_DB_URI;
 
 // Connect to MongoDB
-mongoose.connect(mongoURI)
+mongoose
+  .connect(mongoURI)
   .then(() => {
     console.log("Connected to MongoDB");
     // Start the server
