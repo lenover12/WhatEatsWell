@@ -9,7 +9,7 @@ dotenv.config();
 
 test.before(async () => {
   // Define the MongoDB URI
-  const mongoURI = process.env.ACCOUNTS_DB_URI;
+  const mongoURI = process.env.BASE_DB_URI;
 
   // Connect to MongoDB
   await mongoose.connect(mongoURI, {});
