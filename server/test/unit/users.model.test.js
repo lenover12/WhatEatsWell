@@ -3,9 +3,11 @@ import request from "supertest";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import app from "../../server.js";
+import usersSchema from "../../schemas/users.schema.js";
 import UsersModel from "../../models/users.model.js";
 
 let mongod;
+let Users;
 
 test.before(async () => {
   // Start MongoDB Memory Server
@@ -17,8 +19,12 @@ test.before(async () => {
   // Connect to the MongoDB instance
   await mongoose.connect(uri);
 
+  // Mock the same usersSchema as the UsersModel
+  const database = mongoose.connection.useDb("accounts");
+  Users = database.model("Users", usersSchema);
+
   // Insert test data into the 'users' collection
-  await UsersModel.insertMany([
+  await Users.insertMany([
     {
       _id: "65fe85e8d32123cf23323877",
       given_name: "Leonard",
@@ -55,40 +61,37 @@ test.after.always(async () => {
 });
 
 test("Retrieve list of users", async (t) => {
-  // Send a GET request to the api/v1/users API endpoint
-  const response = await request(app).get("/api/v1/users");
-
+  // Send a GET request to the api/v1/users/u/ API endpoint
+  const response = await request(app).get("/api/v1/users/u/");
   // Assert a 200 response
   t.is(response.status, 200);
-
   // Assert the body response contains an array of users
-  t.true(Array.isArray(response.body.users));
-  t.is(response.body.users.length, 2); // Check if the correct number of users is retrieved
+  t.true(Array.isArray(response.body));
+  // Check if the correct number of users is retrieved
+  t.is(response.body.length, 2);
 });
 
 test("Retrieve list of users with filters", async (t) => {
   // Send a GET request to the api/v1/users API endpoint with filters
   const response = await request(app)
-    .get("/api/v1/users")
+    .get("/api/v1/users/f/")
     .query({ given_name: "Leonard" });
-
   // Assert a 200 response
   t.is(response.status, 200);
-
   // Assert the body response contains an array of users
   t.true(Array.isArray(response.body.users));
-  t.is(response.body.users.length, 1); // Check if only one user is retrieved
-
+  // Check if only one user is retrieved
+  t.is(response.body.users.length, 1);
   // Assert the retrieved user matches the filter
   t.is(response.body.users[0].given_name, "Leonard");
 });
 
 test("Invalid query parameters are removed", async (t) => {
-  const response = await request(app).get("/api/v1/users?invalid_filter=test");
-
+  const response = await request(app).get(
+    "/api/v1/users/f/?invalid_filter=test"
+  );
   // Assert that the response status is 200 OK
   t.is(response.status, 200);
-
   // Assert that the 'invalid_filter' query parameter is not present in req.query
   t.falsy(response.body.invalid_filter);
 });

@@ -20,13 +20,11 @@ test.after.always(async () => {
   await mongoose.disconnect();
 });
 
-test("Connect to deployment database", async (t) => {
+test("Retrieve list of users from the deployment database", async (t) => {
   // Send a GET request to the api/v1/users API endpoint
-  const response = await request(app).get("/api/v1/users");
-
+  const response = await request(app).get("/api/v1/users/u/");
   // Assert a 200 response
   t.is(response.status, 200);
-
   // Assert the body response contains an array of users
-  t.true(Array.isArray(response.body.users));
+  t.true(Array.isArray(response.body));
 });
