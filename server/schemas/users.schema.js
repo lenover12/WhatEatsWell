@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
-// Define the schema for the accounts collection
-const accountsSchema = new Schema(
+//Define the schema for the users collection in the accounts database
+const usersSchema = new Schema(
   {
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -12,7 +12,7 @@ const accountsSchema = new Schema(
     family_name: { type: String },
     DOB: { type: Date },
     premium: { type: Boolean, default: false },
-    // Array of references to Food documents
+    //Array of references to Food documents
     food: [{ type: Schema.Types.ObjectId, ref: "foods" }],
     weight: { type: Number },
     height: { type: Number },
@@ -21,4 +21,4 @@ const accountsSchema = new Schema(
   { collection: "users" }
 );
 
-export default accountsSchema;
+export default usersSchema;
