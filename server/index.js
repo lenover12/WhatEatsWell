@@ -1,24 +1,26 @@
 import app from "./server.js";
-import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { connectDB } from "./connections/database.js";
 
-// Load environment variables from .env file
 dotenv.config();
 
-// Define the MongoDB URI
-const mongoURI = process.env.ACCOUNTS_DB_URI;
+//Establish connection to database,
+async function connectDatabases() {
+  try {
+    await connectDB();
+    startServer();
+  } catch (error) {
+    console.error("Error connecting to the database:", error);
+    process.exit(1);
+  }
+}
 
-// Connect to MongoDB
-mongoose
-  .connect(mongoURI)
-  .then(() => {
-    console.log("Connected to MongoDB");
-    // Start the server
-    const port = process.env.PORT || 8000;
-    app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
-    });
-  })
-  .catch((error) => {
-    console.error("Error connecting to MongoDB:", error);
+//Start the web server
+function startServer() {
+  const port = process.env.PORT || 8000;
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
   });
+}
+
+connectDatabases();
