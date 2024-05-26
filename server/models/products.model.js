@@ -5,7 +5,7 @@ import productsSchema from "../schemas/products.schema.js";
 const database = mongoose.connection.useDb("foods");
 const Products = database.model("Products", productsSchema);
 
-Products.getProductss = async function ({ filters, page, foodsPerPage }) {
+Products.getProducts = async function ({ filters, page, foodsPerPage }) {
   const query = {};
 
   // Apply filters if present

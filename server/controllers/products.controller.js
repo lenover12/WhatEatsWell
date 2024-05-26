@@ -35,43 +35,73 @@ async function searchAndUpdateProductByBarcode(barcode) {
   }
 }
 
+// TODO: import userId to pull users foods from database
 async function searchAndDisplayProducts(searchTerm) {
   try {
+    // // Fetch user's data from the database
+    // const userData = await UserModel.findById(userId);
+
     const response = await axios.get(
-      //TODO: find the search parameter API endpoint for OFF
-      `https://world.openfoodfacts.net/api/v2/search/${searchTerm}.json`,
+      `https://world.openfoodfacts.net/cgi/search.pl?&search_terms=${searchTerm}&json=1`,
       {
         timeout: 30000,
       }
     );
 
-    // Get the current users added foods array
-    //TODO: create this method in user model/controller?
-    //TODO: work out session data that holds user reference, import user
-    //TODO: create this array of user food IDs
-    const userFoodIds = await UserModel.getUserFoods(user);
-
     // Format the response to local database standard
-    for (item in response.data) {
-      var objectId = formatId(item._id);
-      var product = formatResponse(item, objectId);
-      // Check if this product exists in the user's database for the current user
-      // TODO: have current users session and ID
-      // TODO: connect to the users database and check the foods objects array
-      // TODO: rather, we pull all the users food ID's (retreive all their account info) and have that stored in the session to be used now.
-      // var foodExists = false;
-      for (foodId in userFoodIds) {
-        if ((objectId = foodId)) {
-          // foodExists = true;
-          product.userOwns = true;
-        }
-      }
-      item = product;
-    }
+    response.data.products.forEach((productData, index) => {
+      const objectId = formatId(productData._id);
+      const product = formatResponse(productData, objectId);
+      // // Check if this product exists in the current users food array
+      // if (userData.foods.includes(objectId)) {
+      //   product.userOwns = true;
+      // }
+      response.data.products[index] = product;
+    });
+
     return response.data;
   } catch (error) {
     console.error("Error searching product by barcode:", error);
     throw error;
+  }
+}
+
+// Add food to user foods array in database
+async function addCurrentProductToDatabase(req, res) {
+  try {
+    // Extract product data
+    const { productId } = req.body;
+
+    // Check if product exists in the database
+    const existingProduct = await Product.findById(productId);
+
+    // Save or update existing product
+    if (existingProduct) {
+      await Product.findByIdAndUpdate(productId, req.body);
+      console.log(`Updated existing product with _id: ${productId}`);
+    } else {
+      const newProduct = new Product(req.body);
+      await newProduct.save();
+      console.log(`Saved new product with _id: ${productId}`);
+    }
+
+    //TODO: user food array implementation
+    // // Get the user ID from the request (you need to implement this part)
+    // const userId = req.user.id;
+
+    // // Update user's foods array with product ID
+    // await User.findByIdAndUpdate(
+    //   userId,
+    //   { $addToSet: { foods: productId } }, // Use $addToSet to prevent duplicate entries
+    //   { new: true }
+    // );
+
+    return res.status(200).json({
+      message: `Product updated/saved and added to user successfully`,
+    });
+  } catch (error) {
+    console.error("Error updating or saving product:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -101,9 +131,6 @@ function formatResponse(responseProduct, paddedId) {
     ingredients_analysis_tags,
   } = productInfo;
 
-  // const paddedId = externalId.padStart(24, "0");
-  // const _id = ObjectId.createFromHexString(paddedId);
-
   // Create a new product object including the formatted Id
   const product = new Product({
     _id: paddedId,
@@ -126,4 +153,8 @@ function formatResponse(responseProduct, paddedId) {
   return product;
 }
 
-export { searchAndUpdateProductByBarcode };
+export {
+  searchAndUpdateProductByBarcode,
+  searchAndDisplayProducts,
+  addCurrentProductToDatabase,
+};
