@@ -1,19 +1,25 @@
 import express from "express";
 import cors from "cors";
-import accounts from "./api/accounts.route.js";
+import users from "./routes/users.route.js";
+import products from "./routes/products.route.js";
 
-// create the express application
+//Create express application
 const app = express();
 
-// enable cross-origin resource sharing
-// allows requests from different origins
+//Enable cross-origin resource sharing
 app.use(cors());
 
-// allows application to read JSON requests
+//Allow reading JSON requests
 app.use(express.json());
 
-// routing
-app.use("/api/v1/accounts", accounts);
-app.use("*", (req, res) => res.status(404).json({ error: "not found" }));
+//Routing
+// users
+app.use("/api/v1/users", users);
+// Product
+app.use("/api/v1/products", products);
+// Wildcard route handler
+app.use("*", (req, res) =>
+  res.status(404).json({ error: "Incorrect Route End" })
+);
 
 export default app;

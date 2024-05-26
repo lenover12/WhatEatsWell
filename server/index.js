@@ -1,30 +1,26 @@
 import app from "./server.js";
-import mongodb from "mongodb";
 import dotenv from "dotenv";
+import { connectDB } from "./connections/database.js";
 
-// load environment variables from .env file
 dotenv.config();
 
-// alias for the MongoDB client
-const MongoClient = mongodb.MongoClient;
-
-// define the port to listen on
-const port = process.env.PORT || 8000;
-
-// connect to mongoDB database
-MongoClient.connect(process.env.ACCOUNTS_DB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  wtimeout: 2500,
-})
-  // log connection errors and close connection
-  .catch((err) => {
-    console.error(err.stack);
+//Establish connection to database,
+async function connectDatabases() {
+  try {
+    await connectDB();
+    startServer();
+  } catch (error) {
+    console.error("Error connecting to the database:", error);
     process.exit(1);
-  })
-  // start express server and listen
-  .then(async () => {
-    app.listen(port, () => {
-      console.log(`listening on port ${port}`);
-    });
+  }
+}
+
+//Start the web server
+function startServer() {
+  const port = process.env.PORT || 8000;
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
   });
+}
+
+connectDatabases();
