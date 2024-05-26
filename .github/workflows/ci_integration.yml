@@ -1,6 +1,7 @@
 name: CI integration tests
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -20,7 +21,7 @@ jobs:
         id: get-ip
         shell: bash
         run: |
-          echo "ip-address=$(curl https://checkip.amazonaws.com)" >> "$GITHUB_OUTPUT"
+          echo "ip-address=$(curl https://checkip.amazonaws.com)"
 
       - name: Permit the runner to access MongoDB Atlas
         id: allow-ip
@@ -37,6 +38,7 @@ jobs:
           GROUP_ID: ${{ secrets.ATLAS_ORG_ADMIN_GROUP_KEY }}
           PASSWORD: ${{ secrets.ATLAS_ORG_ADMIN_PRIVATE_KEY }}
           USERNAME: ${{ secrets.ATLAS_ORG_ADMIN_PUBLIC_KEY }}
+          BASE_DB_URI: ${{ secrets.ATLAS_DB_URI }}
       
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,9 +51,6 @@ jobs:
       - name: Install server dependencies
         working-directory: ./server
         run: npm install
-
-      - name: Set MongoDB URI environment variable
-        run: echo "BASE_DB_URI=${{ secrets.ATLAS_DB_URI }}"
 
       - name: Run integration tests with Ava
         working-directory: ./server
