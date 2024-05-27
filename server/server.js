@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import users from "./routes/users.route.js";
 import products from "./routes/products.route.js";
+import pagesRoutes from "./routes/pages.route.js";
 
 //Create express application
 const app = express();
@@ -13,6 +14,9 @@ app.use(cors());
 app.use(express.json());
 
 //Routing
+//pages
+app.use("/", pagesRoutes);
+//API Routing
 // users
 app.use("/api/v1/users", users);
 // Product
