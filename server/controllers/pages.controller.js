@@ -1,5 +1,9 @@
 import UsersModel from "../models/users.model.js";
 import { hashPassword, comparePassword } from "../helpers/auth.helper.js";
+import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
+
+dotenv.config();
 
 const test = (req, res) => {
   res.json("test response data");
@@ -60,7 +64,15 @@ const loginUser = async (req, res) => {
     // Check password
     const match = await comparePassword(password, user.password);
     if (match) {
-      res.json("passwords match");
+      jwt.sign(
+        { email: user.email, id: user._id, username: user.username },
+        process.env.JWT_SECRET,
+        {},
+        (err, token) => {
+          if (err) throw err;
+          res.cookie("token", token).json(user);
+        }
+      );
     }
     if (!match) {
       res.json("passwords do not match");

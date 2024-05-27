@@ -3,6 +3,7 @@ import cors from "cors";
 import users from "./routes/users.route.js";
 import products from "./routes/products.route.js";
 import pagesRoutes from "./routes/pages.route.js";
+import cookieParser from "cookie-parser";
 
 //Create express application
 const app = express();
@@ -17,7 +18,8 @@ app.use(
 
 //Allow reading JSON and URL-encoded requests
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(express.urlencoded({ extended: false }));
 
 //Routing
 //pages
