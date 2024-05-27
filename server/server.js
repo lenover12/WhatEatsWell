@@ -8,7 +8,12 @@ import pagesRoutes from "./routes/pages.route.js";
 const app = express();
 
 //Enable cross-origin resource sharing
-app.use(cors());
+app.use(
+  cors({
+    credentials: true,
+    origin: "http://localhost:5173",
+  })
+);
 
 //Allow reading JSON requests
 app.use(express.json());

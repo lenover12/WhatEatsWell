@@ -47,6 +47,24 @@ const UsersModel = {
       throw new Error(`Error retrieving usernames: ${error.message}`);
     }
   },
+
+  async findUserByEmail(query) {
+    try {
+      const user = await Users.findOne(query);
+      return user;
+    } catch (error) {
+      throw new Error(`Error finding user: ${error.message}`);
+    }
+  },
+
+  async createUser(userData) {
+    try {
+      const newUser = await Users.create(userData);
+      return newUser;
+    } catch (error) {
+      throw new Error(`Error creating user: ${error.message}`);
+    }
+  },
 };
 
 export default UsersModel;

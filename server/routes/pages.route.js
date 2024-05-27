@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { test } from "../controllers/pages.controller.js";
+import { test, registerUser } from "../controllers/pages.controller.js";
 
 const router = express.Router();
 
@@ -13,5 +13,6 @@ router.use(
 );
 
 router.get("/", test);
+router.post("/register", registerUser);
 
 export default router;

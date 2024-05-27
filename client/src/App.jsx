@@ -5,6 +5,7 @@ import Home from '../src/pages/Home'
 import Register from '../src/pages/Register'
 import Login from '../src/pages/Login'
 import axios from 'axios';
+import { Toaster } from 'react-hot-toast'
 
 // port number defined in backend env
 const port = 404;
@@ -16,6 +17,7 @@ function App() {
   return (
     <>
     <Navbar />
+    <Toaster position='bottom-left' toastOptions={{duration: 2000}} />
     <Routes>
       <Route path='/' element={<Home />} />
       <Route path='/register' element={<Register />} />
