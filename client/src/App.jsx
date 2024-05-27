@@ -7,6 +7,7 @@ import Login from '../src/pages/Login'
 import axios from 'axios';
 import { Toaster } from 'react-hot-toast'
 import { UserContextProvider } from '../context/user.context'
+import Dashboard from './pages/Dashboard'
 
 // port number defined in backend env
 const port = 404;
@@ -23,6 +24,7 @@ function App() {
       <Route path='/' element={<Home />} />
       <Route path='/register' element={<Register />} />
       <Route path='/login' element={<Login />} />
+      <Route path='/dashboard' element={<Dashboard />} />
     </Routes>
     </UserContextProvider>
   )
