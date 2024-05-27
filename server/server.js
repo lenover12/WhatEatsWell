@@ -15,8 +15,9 @@ app.use(
   })
 );
 
-//Allow reading JSON requests
+//Allow reading JSON and URL-encoded requests
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 //Routing
 //pages

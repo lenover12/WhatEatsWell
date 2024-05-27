@@ -5,6 +5,7 @@ const test = (req, res) => {
   res.json("test response data");
 };
 
+//Register Endpoint
 const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -43,4 +44,30 @@ const registerUser = async (req, res) => {
   }
 };
 
-export { test, registerUser };
+//Login Endpoint
+const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Check if user exists
+    const user = await UsersModel.findUserByEmail({ email });
+    if (!user) {
+      return res.json({
+        error: "No user found",
+      });
+    }
+
+    // Check password
+    const match = await comparePassword(password, user.password);
+    if (match) {
+      res.json("passwords match");
+    }
+    if (!match) {
+      res.json("passwords do not match");
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export { test, registerUser, loginUser };
