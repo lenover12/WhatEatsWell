@@ -82,6 +82,12 @@ const loginUser = async (req, res) => {
   }
 };
 
+//Logout Endpoint
+const logoutUser = async (req, res) => {
+  res.clearCookie("token");
+  res.json({ message: "Logout successful" });
+};
+
 const getProfile = (req, res) => {
   const { token } = req.cookies;
   if (token) {
@@ -94,4 +100,4 @@ const getProfile = (req, res) => {
   }
 };
 
-export { test, registerUser, loginUser, getProfile };
+export { test, registerUser, loginUser, logoutUser, getProfile };
