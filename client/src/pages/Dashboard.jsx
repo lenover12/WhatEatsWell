@@ -1,12 +1,22 @@
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { UserContext } from "../../context/user.context";
 
 export default function Dashboard() {
-  const {user} = useContext(UserContext)
-  return(
+  const { user, fetchUserProfile } = useContext(UserContext);
+
+  useEffect(() => {
+    if (!user) {
+      fetchUserProfile();
+    }
+  }, [user, fetchUserProfile]);
+
+  return (
     <div>
-      <h1>Dashboard</h1>
-      {!!user && (<h2>Welcome {user.username}!</h2>)}
+      {user ? (
+        <div>Welcome, {user.username}!</div>
+      ) : (
+        <div>Loading...</div>
+      )}
     </div>
-  )
+  );
 }

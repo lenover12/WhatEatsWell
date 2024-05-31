@@ -7,15 +7,23 @@ export const UserContext = createContext({});
 //send state down the entire application
 export function UserContextProvider({ children }) {
   const [user, setUser] = useState(null);
-  useEffect(() => {
-    if (!user) {
-      axios.get("/profile").then(({ data }) => {
-        setUser(data);
-      });
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data } = await axios.get("/profile");
+      setUser(data);
+    } catch (error) {
+      console.error("Failed to set user", error);
+      setUser(null);
     }
+  };
+
+  useEffect(() => {
+    fetchUserProfile();
   }, []);
+
   return (
-    <UserContext.Provider value={{user, setUser}}>
+    <UserContext.Provider value={{ user, setUser, fetchUserProfile }}>
       {children}
     </UserContext.Provider>
   );
