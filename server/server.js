@@ -2,17 +2,27 @@ import express from "express";
 import cors from "cors";
 import users from "./routes/users.route.js";
 import products from "./routes/products.route.js";
+import pagesRoutes from "./routes/pages.route.js";
 
 //Create express application
 const app = express();
 
 //Enable cross-origin resource sharing
-app.use(cors());
+app.use(
+  cors({
+    credentials: true,
+    origin: "http://localhost:5173",
+  })
+);
 
-//Allow reading JSON requests
+//Allow reading JSON and URL-encoded requests
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 //Routing
+//pages
+app.use("/", pagesRoutes);
+//API Routing
 // users
 app.use("/api/v1/users", users);
 // Product
