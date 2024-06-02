@@ -8,13 +8,11 @@ import {
 const router = express.Router();
 
 // Search a product by its barcode value
-// Add result to food database
-//TODO: also add to current user.food array in database
+// Add result to products in food database
+// Add result to current user.food array in accounts database
 router.post("/search/:barcode", async (req, res, next) => {
-  const { barcode } = req.params;
   try {
-    const product = await searchAndUpdateProductByBarcode(barcode);
-    res.json(product);
+    await searchAndUpdateProductByBarcode(req, res);
   } catch (error) {
     next(error);
   }

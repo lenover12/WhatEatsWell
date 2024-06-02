@@ -12,8 +12,8 @@ const usersSchema = new Schema(
     family_name: { type: String },
     DOB: { type: Date },
     premium: { type: Boolean, default: false },
-    //Array of references to Food documents
-    food: [{ type: Schema.Types.ObjectId, ref: "foods" }],
+    //Array of references sharing food (products, wholefoods) _id
+    food: [{ type: Schema.Types.ObjectId }],
     weight: { type: Number },
     height: { type: Number },
     carbohydrates_serving_size: { type: Number },

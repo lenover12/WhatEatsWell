@@ -65,6 +65,22 @@ const UsersModel = {
       throw new Error(`Error creating user: ${error.message}`);
     }
   },
+
+  async addProductToUserFoods(userId, productId) {
+    try {
+      // Use $addToSet to prevent duplicate entries
+      const updatedUser = await Users.findByIdAndUpdate(
+        userId,
+        { $addToSet: { food: productId } },
+        { new: true }
+      );
+      return updatedUser;
+    } catch (error) {
+      throw new Error(
+        `Error adding product to user's food array: ${error.message}`
+      );
+    }
+  },
 };
 
 export default UsersModel;
