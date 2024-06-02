@@ -4,6 +4,8 @@ import {
   test,
   registerUser,
   loginUser,
+  logoutUser,
+  getProfile,
 } from "../controllers/pages.controller.js";
 
 const router = express.Router();
@@ -19,5 +21,7 @@ router.use(
 router.get("/", test);
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/logout", logoutUser);
+router.get("/profile", getProfile);
 
 export default router;
