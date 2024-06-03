@@ -1,10 +1,16 @@
 import axios from "axios";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 import Product from "../models/products.model.js";
 import UserModel from "../models/users.model.js";
 import { ObjectId } from "mongodb";
 
-async function searchAndUpdateProductByBarcode(barcode) {
+dotenv.config();
+
+async function searchAndUpdateProductByBarcode(req, res) {
   try {
+    const { barcode } = req.params;
+
     const response = await axios.get(
       `https://world.openfoodfacts.net/api/v2/product/${barcode}.json`,
       {
@@ -17,30 +23,40 @@ async function searchAndUpdateProductByBarcode(barcode) {
     const product = formatResponse(response.data.product, objectId);
 
     // Check if the product already exists in the database
-    const existingProduct = await Product.findById(objectId);
+    let existingProduct = await Product.findById(objectId);
     if (existingProduct) {
       // Update existing product
       await Product.findByIdAndUpdate(objectId, product.toObject());
       console.log(`Updated existing product with _id: ${objectId}`);
     } else {
       // Save the product into the database
-      await product.save();
+      existingProduct = await product.save();
       console.log(`Saved new product with _id: ${objectId}`);
     }
 
-    return product;
+    // Get the user ID from the JWT token in the request cookies
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Update user's food array with product ID
+    await UserModel.addProductToUserFoods(user.id, objectId);
+
+    return res.status(200).json({
+      message: "Product updated/saved and added to user successfully",
+      product: existingProduct,
+    });
   } catch (error) {
     console.error("Error searching product by barcode:", error);
-    throw error;
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
 
-// TODO: import userId to pull users foods from database
 async function searchAndDisplayProducts(searchTerm) {
   try {
-    // // Fetch user's data from the database
-    // const userData = await UserModel.findById(userId);
-
     const response = await axios.get(
       `https://world.openfoodfacts.net/cgi/search.pl?&search_terms=${searchTerm}&json=1`,
       {
@@ -52,10 +68,6 @@ async function searchAndDisplayProducts(searchTerm) {
     response.data.products.forEach((productData, index) => {
       const objectId = formatId(productData._id);
       const product = formatResponse(productData, objectId);
-      // // Check if this product exists in the current users food array
-      // if (userData.foods.includes(objectId)) {
-      //   product.userOwns = true;
-      // }
       response.data.products[index] = product;
     });
 
@@ -66,38 +78,37 @@ async function searchAndDisplayProducts(searchTerm) {
   }
 }
 
-// Add food to user foods array in database
 async function addCurrentProductToDatabase(req, res) {
   try {
-    // Extract product data
-    const { productId } = req.body;
+    // Extract product data from request body
+    const { productId, ...productData } = req.body;
 
     // Check if product exists in the database
-    const existingProduct = await Product.findById(productId);
+    let existingProduct = await Product.findById(productId);
 
     // Save or update existing product
     if (existingProduct) {
-      await Product.findByIdAndUpdate(productId, req.body);
+      await Product.findByIdAndUpdate(productId, productData);
       console.log(`Updated existing product with _id: ${productId}`);
     } else {
-      const newProduct = new Product(req.body);
-      await newProduct.save();
+      const newProduct = new Product({ _id: productId, ...productData });
+      existingProduct = await newProduct.save();
       console.log(`Saved new product with _id: ${productId}`);
     }
 
-    //TODO: user food array implementation
-    // // Get the user ID from the request (you need to implement this part)
-    // const userId = req.user.id;
+    // Get the user ID from the JWT token in the request cookies
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
-    // // Update user's foods array with product ID
-    // await User.findByIdAndUpdate(
-    //   userId,
-    //   { $addToSet: { foods: productId } }, // Use $addToSet to prevent duplicate entries
-    //   { new: true }
-    // );
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Update user's food array with product ID
+    await UserModel.addProductToUserFoods(user.id, productId);
 
     return res.status(200).json({
-      message: `Product updated/saved and added to user successfully`,
+      message: "Product updated/saved and added to user successfully",
     });
   } catch (error) {
     console.error("Error updating or saving product:", error);
