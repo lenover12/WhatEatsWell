@@ -10,6 +10,9 @@ export default function Navbar() {
       <Link to='/'>Home</Link>
       {!user && <Link to='/register'>Register</Link>}
       {!user && <Link to='/login'>Login</Link>}
+      {user && <Link to='/dashboard'>Dashboard</Link>}
+      {user && <Link to='/search'>Search</Link>}
+      {user && <Link to='/myfood'>My Food</Link>}
       {user && <button onClick={logout}>Logout</button>}
     </nav>
   )

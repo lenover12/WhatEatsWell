@@ -16,7 +16,7 @@ export default function Dashboard() {
     e.preventDefault();
     try {
       // Make a POST request to your backend API with the barcode
-      const response = await axios.post(`/api/v1/products/search/${barcode}`);
+      const response = await axios.post(`/api/v1/products/barcode/${barcode}`);
       console.log("Product search response:", response.data);
     } catch (error) {
       console.error("Error searching product:", error);
