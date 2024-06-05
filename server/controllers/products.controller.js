@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import Product from "../models/products.model.js";
 import UserModel from "../models/users.model.js";
 import { ObjectId } from "mongodb";
+// import { getUserFromToken } from "../utils/auth.js";
 
 dotenv.config();
 
@@ -42,7 +43,7 @@ async function searchAndUpdateProductByBarcode(req, res) {
 
     const user = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Update user's food array with product ID
+    // Update user's foods array with product ID
     await UserModel.addProductToUserFoods(user.id, objectId);
 
     return res.status(200).json({
@@ -78,6 +79,7 @@ async function searchAndDisplayProducts(searchTerm) {
   }
 }
 
+// add the product into the product database and the users database
 async function addCurrentProductToDatabase(req, res) {
   try {
     // Extract product data from request body
@@ -104,14 +106,66 @@ async function addCurrentProductToDatabase(req, res) {
 
     const user = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Update user's food array with product ID
-    await UserModel.addProductToUserFoods(user.id, productId);
+    // Update user's foods array with product ID
+    await UserModel.addProductToUserFoods(user.id, {
+      product_id: productId,
+    });
 
     return res.status(200).json({
       message: "Product updated/saved and added to user successfully",
     });
   } catch (error) {
     console.error("Error updating or saving product:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+async function getUserFoods(req, res) {
+  try {
+    // Get the user ID from the JWT token in the request cookies
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Retrieve user's foods
+    const userFoods = await UserModel.getUserFoods(user.id);
+
+    return res.status(200).json({
+      foods: userFoods,
+    });
+  } catch (error) {
+    console.error("Error retrieving user's foods:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+async function getUserProductDetails(req, res) {
+  try {
+    // Get the user ID from the JWT token in the request cookies
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Retrieve user's foods
+    const userFoods = await UserModel.getUserFoods(user.id);
+
+    // Extract products list
+    const productIds = userFoods.products;
+
+    // Fetch full product data for each product ID
+    const products = await Product.find({ _id: { $in: productIds } });
+
+    return res.status(200).json({
+      products: products,
+    });
+  } catch (error) {
+    console.error("Error retrieving user's product details:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -168,4 +222,5 @@ export {
   searchAndUpdateProductByBarcode,
   searchAndDisplayProducts,
   addCurrentProductToDatabase,
+  getUserProductDetails,
 };
