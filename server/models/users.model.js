@@ -66,19 +66,71 @@ const UsersModel = {
     }
   },
 
-  async addProductToUserFoods(userId, productId) {
+  /**
+   * Add product information to the user's foods.products array
+   * @param {String} userId - The user's ID
+   * @param {Object} productInfo - The product information to add
+   */
+  async addProductToUserFoods(userId, productInfo) {
+    try {
+      const user = await Users.findById(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Check if the product with the same _id already exists in the array
+      const existingProduct = user.foods.products.find((product) =>
+        product._id.equals(productInfo._id)
+      );
+      if (existingProduct) {
+        // Product with the same _id already exists, do not add it again
+        console.log("user already follows this food");
+        return user;
+      }
+
+      // Add the product to the array
+      user.foods.products.push(productInfo);
+      await user.save();
+      return user;
+    } catch (error) {
+      throw new Error(
+        `Error adding product to user's foods.products array: ${error.message}`
+      );
+    }
+  },
+
+  /**
+   * Add wholefood information to the user's foods.wolefoods array
+   * @param {String} userId - The user's ID
+   * @param {Object} wholefoodInfo - The wholefood information to add
+   */
+  async addWholefoodToUserFoods(userId, wholefoodInfo) {
     try {
       // Use $addToSet to prevent duplicate entries
       const updatedUser = await Users.findByIdAndUpdate(
         userId,
-        { $addToSet: { food: productId } },
+        { $addToSet: { "foods.wholefoods": wholefoodInfo } },
         { new: true }
       );
       return updatedUser;
     } catch (error) {
       throw new Error(
-        `Error adding product to user's food array: ${error.message}`
+        `Error adding product to user's foods.wholefoods array: ${error.message}`
       );
+    }
+  },
+
+  async getUserFoods(userId) {
+    try {
+      const user = await Users.findById(userId)
+        .populate("foods.products")
+        .populate("foods.wholefoods");
+      if (!user) {
+        throw new Error("User not found");
+      }
+      return user.foods;
+    } catch (error) {
+      throw new Error(`Error retrieving user's foods: ${error.message}`);
     }
   },
 };

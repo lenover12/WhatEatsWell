@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import Product from "../models/products.model.js";
 import UserModel from "../models/users.model.js";
 import { ObjectId } from "mongodb";
+import { getUserFromToken } from "../utils/auth.js";
 
 dotenv.config();
 
@@ -42,8 +43,10 @@ async function searchAndUpdateProductByBarcode(req, res) {
 
     const user = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Update user's food array with product ID
-    await UserModel.addProductToUserFoods(user.id, objectId);
+    // Update user's foods array with product ID
+    await UserModel.addProductToUserFoods(user.id, {
+      _id: objectId,
+    });
 
     return res.status(200).json({
       message: "Product updated/saved and added to user successfully",
@@ -78,6 +81,7 @@ async function searchAndDisplayProducts(searchTerm) {
   }
 }
 
+// add the product into the product database and the users database
 async function addCurrentProductToDatabase(req, res) {
   try {
     // Extract product data from request body
@@ -97,15 +101,16 @@ async function addCurrentProductToDatabase(req, res) {
     }
 
     // Get the user ID from the JWT token in the request cookies
-    const { token } = req.cookies;
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const user = getUserFromToken(req);
 
-    const user = jwt.verify(token, process.env.JWT_SECRET);
+    // Check that the food isn't already in the user's food array
 
-    // Update user's food array with product ID
-    await UserModel.addProductToUserFoods(user.id, productId);
+    // Format the response to local database standard
+    const objectId = formatId(productId);
+    // Update user's foods array with product ID
+    await UserModel.addProductToUserFoods(user.id, {
+      _id: objectId,
+    });
 
     return res.status(200).json({
       message: "Product updated/saved and added to user successfully",
@@ -116,6 +121,57 @@ async function addCurrentProductToDatabase(req, res) {
   }
 }
 
+async function getUserFoods(req, res) {
+  try {
+    // Get the user ID from the JWT token in the request cookies
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Retrieve user's foods
+    const userFoods = await UserModel.getUserFoods(user.id);
+
+    return res.status(200).json({
+      foods: userFoods,
+    });
+  } catch (error) {
+    console.error("Error retrieving user's foods:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+async function getUserProductDetails(req, res) {
+  try {
+    // Get the user ID from the JWT token in the request cookies
+    const user = getUserFromToken(req);
+
+    // Retrieve user's foods
+    const userFoods = await UserModel.getUserFoods(user.id);
+
+    // Extract products list
+    const productIds = userFoods.products.map((product) => ({
+      _id: product._id,
+    }));
+
+    // Fetch full product data for each product ID
+    const products = await Product.find({ _id: { $in: productIds } });
+
+    // Combine user foods information to retrieved products information
+    // TODO
+
+    return res.status(200).json({
+      products: products,
+    });
+  } catch (error) {
+    console.error("Error retrieving user's product details:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// converts a string into a 24 character ObjectId
 function formatId(_id) {
   const paddedId = _id.padStart(24, "0");
   const objectId = ObjectId.createFromHexString(paddedId);
@@ -168,4 +224,5 @@ export {
   searchAndUpdateProductByBarcode,
   searchAndDisplayProducts,
   addCurrentProductToDatabase,
+  getUserProductDetails,
 };

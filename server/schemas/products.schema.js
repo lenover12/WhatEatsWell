@@ -6,9 +6,6 @@ const { Schema } = mongoose;
 // schema mimicks OpenFoodFacts
 const productsSchema = new Schema(
   {
-    // Product barcode used in OpenFoodFacts database
-    // Or a unique id from FatSecret API for non packaged foods
-    //TODO:
     // _id: { type: Schema.Types.ObjectId, required: true, unique: true },
     food_name: { type: String, required: true },
     image_url: { type: String },
