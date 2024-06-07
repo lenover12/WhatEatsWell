@@ -16,7 +16,6 @@ const usersSchema = new Schema(
     foods: {
       products: [
         {
-          product_id: { type: Schema.Types.ObjectId },
           added_at: { type: Date, default: Date.now },
           in_list: {
             type: String,
@@ -35,7 +34,6 @@ const usersSchema = new Schema(
       ],
       wholefoods: [
         {
-          wholefood_id: { type: Schema.Types.ObjectId },
           added_at: { type: Date, default: Date.now },
           in_list: {
             type: String,

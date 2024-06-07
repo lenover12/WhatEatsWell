@@ -35,6 +35,7 @@ export default function MyFood() {
 
   return (
     <div>
+      <h1>Foods you follow</h1>
       {foods.map((food) => (
         <div key={food._id} style={{ display: "flex", marginBottom: "20px" }}>
           <img

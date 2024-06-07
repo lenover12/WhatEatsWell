@@ -73,13 +73,25 @@ const UsersModel = {
    */
   async addProductToUserFoods(userId, productInfo) {
     try {
-      // Use $addToSet to prevent duplicate entries
-      const updatedUser = await Users.findByIdAndUpdate(
-        userId,
-        { $addToSet: { "foods.products": productInfo } },
-        { new: true }
+      const user = await Users.findById(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Check if the product with the same _id already exists in the array
+      const existingProduct = user.foods.products.find((product) =>
+        product._id.equals(productInfo._id)
       );
-      return updatedUser;
+      if (existingProduct) {
+        // Product with the same _id already exists, do not add it again
+        console.log("user already follows this food");
+        return user;
+      }
+
+      // Add the product to the array
+      user.foods.products.push(productInfo);
+      await user.save();
+      return user;
     } catch (error) {
       throw new Error(
         `Error adding product to user's foods.products array: ${error.message}`

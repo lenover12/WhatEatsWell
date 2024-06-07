@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import Product from "../models/products.model.js";
 import UserModel from "../models/users.model.js";
 import { ObjectId } from "mongodb";
-// import { getUserFromToken } from "../utils/auth.js";
+import { getUserFromToken } from "../utils/auth.js";
 
 dotenv.config();
 
@@ -44,7 +44,9 @@ async function searchAndUpdateProductByBarcode(req, res) {
     const user = jwt.verify(token, process.env.JWT_SECRET);
 
     // Update user's foods array with product ID
-    await UserModel.addProductToUserFoods(user.id, objectId);
+    await UserModel.addProductToUserFoods(user.id, {
+      _id: objectId,
+    });
 
     return res.status(200).json({
       message: "Product updated/saved and added to user successfully",
@@ -99,16 +101,15 @@ async function addCurrentProductToDatabase(req, res) {
     }
 
     // Get the user ID from the JWT token in the request cookies
-    const { token } = req.cookies;
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const user = getUserFromToken(req);
 
-    const user = jwt.verify(token, process.env.JWT_SECRET);
+    // Check that the food isn't already in the user's food array
 
+    // Format the response to local database standard
+    const objectId = formatId(productId);
     // Update user's foods array with product ID
     await UserModel.addProductToUserFoods(user.id, {
-      product_id: productId,
+      _id: objectId,
     });
 
     return res.status(200).json({
@@ -145,21 +146,21 @@ async function getUserFoods(req, res) {
 async function getUserProductDetails(req, res) {
   try {
     // Get the user ID from the JWT token in the request cookies
-    const { token } = req.cookies;
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    const user = jwt.verify(token, process.env.JWT_SECRET);
+    const user = getUserFromToken(req);
 
     // Retrieve user's foods
     const userFoods = await UserModel.getUserFoods(user.id);
 
     // Extract products list
-    const productIds = userFoods.products;
+    const productIds = userFoods.products.map((product) => ({
+      _id: product._id,
+    }));
 
     // Fetch full product data for each product ID
     const products = await Product.find({ _id: { $in: productIds } });
+
+    // Combine user foods information to retrieved products information
+    // TODO
 
     return res.status(200).json({
       products: products,
@@ -170,6 +171,7 @@ async function getUserProductDetails(req, res) {
   }
 }
 
+// converts a string into a 24 character ObjectId
 function formatId(_id) {
   const paddedId = _id.padStart(24, "0");
   const objectId = ObjectId.createFromHexString(paddedId);
