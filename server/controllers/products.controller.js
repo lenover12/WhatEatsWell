@@ -151,19 +151,33 @@ async function getUserProductDetails(req, res) {
     // Retrieve user's foods
     const userFoods = await UserModel.getUserFoods(user.id);
 
-    // Extract products list
-    const productIds = userFoods.products.map((product) => ({
+    // Extract products list with user-specific details
+    const userProducts = userFoods.products.map((product) => ({
       _id: product._id,
+      added_at: product.added_at,
+      in_list: product.in_list,
+      my_serving_size: product.my_serving_size,
     }));
 
     // Fetch full product data for each product ID
-    const products = await Product.find({ _id: { $in: productIds } });
+    const productIds = userProducts.map((product) => product._id);
+    const products = await Product.find({ _id: { $in: productIds } }).lean();
 
-    // Combine user foods information to retrieved products information
-    // TODO
+    // Combine user-specific information with product details
+    const combinedProducts = products.map((product) => {
+      const userProduct = userProducts.find((up) => up._id.equals(product._id));
+      return {
+        ...product,
+        user_information: {
+          added_at: userProduct.added_at,
+          in_list: userProduct.in_list,
+          my_serving_size: userProduct.my_serving_size,
+        },
+      };
+    });
 
     return res.status(200).json({
-      products: products,
+      products: combinedProducts,
     });
   } catch (error) {
     console.error("Error retrieving user's product details:", error);
