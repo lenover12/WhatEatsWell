@@ -38,24 +38,52 @@ ProductModel.getProducts = async function ({ filters, page, foodsPerPage }) {
 
 // Fetch product by barcode from OpenFoodFacts
 ProductModel.fetchOFFProductByBarcode = async function (barcode) {
-  const response = await axios.get(
-    `https://world.openfoodfacts.net/api/v2/product/${barcode}.json`,
-    {
-      timeout: 30000,
+  try {
+    const response = await axios.get(
+      `https://world.openfoodfacts.net/api/v2/product/${barcode}.json`,
+      {
+        timeout: 30000,
+      }
+    );
+
+    if (!response.data || !response.data.product) {
+      // Return an empty object if no products found
+      return {};
     }
-  );
-  return response.data.product;
+
+    return response.data.product;
+  } catch (error) {
+    if (error.response && error.response.status === 500) {
+      // Return specific error message for rate limit issues from OpenFoodFacts
+      throw new Error("OpenFoodFacts API rate limit reached");
+    }
+    throw error;
+  }
 };
 
 // Fetch products by search term from OpenFoodFacts
 ProductModel.fetchOFFProductsBySearch = async function (searchTerm) {
-  const response = await axios.get(
-    `https://world.openfoodfacts.net/cgi/search.pl?&search_terms=${searchTerm}&json=1`,
-    {
-      timeout: 30000,
+  try {
+    const response = await axios.get(
+      `https://world.openfoodfacts.net/cgi/search.pl?&search_terms=${searchTerm}&json=1`,
+      {
+        timeout: 30000,
+      }
+    );
+
+    // Return an empty product list if no products found
+    if (!response.data || !response.data.products) {
+      return { data: { products: [] } };
     }
-  );
-  return response;
+
+    return response;
+  } catch (error) {
+    if (error.response && error.response.status === 500) {
+      // Return specific error message for rate limit issues from OpenFoodFacts
+      throw new Error("OpenFoodFacts API rate limit reached");
+    }
+    throw error;
+  }
 };
 
 // Insert product to database, updating if it already exists
@@ -120,10 +148,6 @@ ProductModel.displayProductByBarcode = async function (barcode, req) {
 
     // Fetch product data from OpenFoodFacts API endpoint
     const productData = await this.fetchOFFProductByBarcode(barcode);
-    // Handle product not found scenario
-    if (!productData) {
-      return { products: [] };
-    }
 
     // Format the product data from the external API
     const product = this.formatProductData(productData);
@@ -150,6 +174,13 @@ ProductModel.displayProductByBarcode = async function (barcode, req) {
       ],
     };
   } catch (error) {
+    if (error.message === "OpenFoodFacts API rate limit reached") {
+      return {
+        products: [],
+        error: "Rate limit reached. Please try again later.",
+      };
+    }
+
     console.error("Error displaying product by barcode:", error);
     throw new Error(`Error displaying product by barcode: ${error.message}`);
   }
@@ -169,14 +200,10 @@ ProductModel.displayProductsBySearchTerm = async function (searchTerm, req) {
     );
 
     // Fetch products data from OpenFoodFacts API endpoint
-    const response = await this.fetchOFFProductsBySearch(searchTerm);
-    // Handle product not found scenario
-    if (!response) {
-      return { products: [] };
-    }
+    const productsData = await this.fetchOFFProductsBySearch(searchTerm);
 
-    // Format the response to local database standard
-    response.data.products.forEach((productData, index) => {
+    // Format the productsData to local database standard
+    productsData.data.products.forEach((productData, index) => {
       const product = this.formatProductData(productData);
       // Retrieve user-specific details using map lookup
       const userProduct = userProductsMap.get(product._id.toString());
@@ -188,21 +215,21 @@ ProductModel.displayProductsBySearchTerm = async function (searchTerm, req) {
             my_serving_size: userProduct.my_serving_size || null,
           }
         : null;
-      response.data.products[index] = {
+      productsData.data.products[index] = {
         ...product.toObject(),
         user_information: userInformation,
       };
-      if (index == 1) {
-        console.log(
-          `\n\nRESPONSE AT INDEX ${index} is:\n${JSON.stringify(
-            response.data.products[index]
-          )}`
-        );
-      }
     });
 
-    return response.data;
+    return productsData.data;
   } catch (error) {
+    if (error.message === "OpenFoodFacts API rate limit reached") {
+      return {
+        products: [],
+        error: "Rate limit reached. Please try again later.",
+      };
+    }
+
     console.error("Error searching product by search term:", error);
     throw error;
   }

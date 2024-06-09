@@ -187,10 +187,12 @@ async function searchAndDisplayProducts(req, res) {
     ) {
       // Retrieve product by barcode
       const product = await Products.displayProductByBarcode(searchTerm, req);
-      if (product) {
-        return res.status(200).json(product);
-      } else {
+      if (Object.keys(product).length === 0) {
         return res.status(404).send("Product not found");
+      } else if (product.error) {
+        return res.status(429).json({ error: product.error });
+      } else {
+        return res.status(200).json(product);
       }
     } else {
       // Retrieve data by search term
@@ -198,6 +200,11 @@ async function searchAndDisplayProducts(req, res) {
         searchTerm,
         req
       );
+
+      if (productsData.error) {
+        return res.status(429).json({ error: productsData.error });
+      }
+
       return res.status(200).json(productsData);
     }
   } catch (error) {
