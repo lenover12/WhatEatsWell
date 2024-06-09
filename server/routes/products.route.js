@@ -1,8 +1,8 @@
 import express from "express";
 import {
-  searchAndUpdateProductByBarcode,
+  addProductByBarcode,
   searchAndDisplayProducts,
-  addCurrentProductToDatabase,
+  addProductBySelection,
   getUserProductDetails,
 } from "../controllers/products.controller.js";
 
@@ -13,7 +13,7 @@ const router = express.Router();
 // Add result to current user.foods array in accounts database
 router.post("/barcode/:barcode", async (req, res, next) => {
   try {
-    await searchAndUpdateProductByBarcode(req, res);
+    await addProductByBarcode(req, res);
   } catch (error) {
     next(error);
   }
@@ -21,9 +21,9 @@ router.post("/barcode/:barcode", async (req, res, next) => {
 
 // Search products and display them
 router.get("/search", async (req, res, next) => {
-  const { query } = req.query;
   try {
-    const products = await searchAndDisplayProducts(query);
+    const { query } = req.query;
+    const products = await searchAndDisplayProducts(query, req, res);
     res.json(products);
   } catch (error) {
     next(error);
@@ -39,6 +39,6 @@ router.get("/user-product-details", async (req, res, next) => {
   }
 });
 
-router.post("/add", addCurrentProductToDatabase);
+router.post("/add", addProductBySelection);
 
 export default router;

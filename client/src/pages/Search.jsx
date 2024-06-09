@@ -1,6 +1,7 @@
 import { useState, useContext, useEffect } from "react";
 import { UserContext } from "../../context/user.context";
 import axios from "axios";
+// import Spinner from "../Spinner";
 
 //todo:
 //get the users foods for products list
@@ -24,9 +25,12 @@ export default function Search() {
     e.preventDefault();
     try {
       setLoading(true);
-      const response = await axios.get(`/api/v1/products/search?query=${searchTerm}`, {
-        withCredentials: true,
-      });
+      const response = await axios.get(
+        `/api/v1/products/search?query=${searchTerm}`,
+        {
+          withCredentials: true,
+        }
+      );
       setFoods(response.data.products);
     } catch (error) {
       console.error("Error fetching user foods:", error);
@@ -42,16 +46,20 @@ export default function Search() {
   const addFoodToDatabase = async (food) => {
     try {
       const { _id, ...foodData } = food;
-      await axios.post('/api/v1/products/add', { productId: _id, ...foodData }, {
-        withCredentials: true,
-      });
-      alert('Food added successfully!');
+      await axios.post(
+        "/api/v1/products/add",
+        { productId: _id, ...foodData },
+        {
+          withCredentials: true,
+        }
+      );
+      alert("Food added successfully!");
     } catch (error) {
-      console.error('Error adding food to database:', error);
-      alert('Failed to add food.');
+      console.error("Error adding food to database:", error);
+      alert("Failed to add food.");
     }
   };
-  
+
   //conditional rendering while retrieving database data
   if (loading) {
     return <div>Loading...</div>;
@@ -76,7 +84,10 @@ export default function Search() {
       {foods.length > 0 && (
         <div>
           {foods.map((food) => (
-            <div key={food._id} style={{ display: "flex", marginBottom: "20px" }}>
+            <div
+              key={food._id}
+              style={{ display: "flex", marginBottom: "20px" }}
+            >
               <img
                 src={food.image_url}
                 alt={food.food_name}
@@ -96,6 +107,29 @@ export default function Search() {
                   <div>
                     <p>Nutriments:</p>
                     <pre>{JSON.stringify(food.nutriments, null, 2)}</pre>
+                  </div>
+                )}
+                {food.user_information && (
+                  <div>
+                    <p>
+                      <strong>User Information:</strong>
+                    </p>
+                    {food.user_information.added_at && (
+                      <p>
+                        Added on:{" "}
+                        {new Date(
+                          food.user_information.added_at
+                        ).toLocaleString()}
+                      </p>
+                    )}
+                    {food.user_information.in_list && (
+                      <p>In list: {food.user_information.in_list}</p>
+                    )}
+                    {food.user_information.my_serving_size && (
+                      <p>
+                        My serving size: {food.user_information.my_serving_size}
+                      </p>
+                    )}
                   </div>
                 )}
                 <button onClick={() => addFoodToDatabase(food)}>Add</button>
