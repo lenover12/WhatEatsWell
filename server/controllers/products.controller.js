@@ -77,8 +77,6 @@ function formatProductData(responseProduct) {
   return product;
 }
 
-//TODO: create displayProductByBarcode
-//
 async function displayProductByBarcode(barcode, req) {
   try {
     // Get the user ID from the JWT token in the request cookies
@@ -94,8 +92,9 @@ async function displayProductByBarcode(barcode, req) {
 
     // Fetch product data from OpenFoodFacts API endpoint
     const productData = await fetchOFFProductByBarcode(barcode);
+    // Handle product not found scenario
     if (!productData) {
-      return { products: [] }; // Handle product not found scenario
+      return { products: [] };
     }
 
     // Format the product data from the external API
@@ -117,7 +116,7 @@ async function displayProductByBarcode(barcode, req) {
     return {
       products: [
         {
-          ...product._doc,
+          ...product.toObject(),
           user_information: userInformation,
         },
       ],
@@ -128,37 +127,50 @@ async function displayProductByBarcode(barcode, req) {
   }
 }
 
-// Add product by barcode to the database and user
-async function addProductByBarcode(req, res) {
+async function displayProductsBySearchTerm(searchTerm, req) {
   try {
-    const { barcode } = req.params;
-    // Retrieve product data from OpenFoodFacts API endpoint
-    const productData = await fetchOFFProductByBarcode(barcode);
-    // Format and Insert the response into  the local database standard
-    const product = formatProductData(productData);
-    await InsertToProductsDB(product);
-
     // Get the user ID from the JWT token in the request cookies
     const user = getUserFromToken(req);
-    await InsertToUsersDB(user, product);
 
-    return res.status(200).json({
-      message: "Product updated/saved and added to user successfully",
-    });
-  } catch (error) {
-    console.error("Error searching and inserting product by barcode:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-}
+    // Fetch user-specific foods from the database
+    const userFoods = await UserModel.getUserFoods(user.id);
 
-async function displayProductsBySearchTerm(searchTerm) {
-  try {
+    // Create a map of user foods for quick lookup
+    const userProductsMap = new Map(
+      userFoods.products.map((product) => [product._id.toString(), product])
+    );
+
+    // Fetch products data from OpenFoodFacts API endpoint
     const response = await fetchOFFProductsBySearch(searchTerm);
+    // Handle product not found scenario
+    if (!response) {
+      return { products: [] };
+    }
 
     // Format the response to local database standard
     response.data.products.forEach((productData, index) => {
       const product = formatProductData(productData);
-      response.data.products[index] = product;
+      // Retrieve user-specific details using map lookup
+      const userProduct = userProductsMap.get(product._id.toString());
+      // Initialize user information object with fallback logic
+      const userInformation = userProduct
+        ? {
+            added_at: userProduct.added_at || null,
+            in_list: userProduct.in_list || null,
+            my_serving_size: userProduct.my_serving_size || null,
+          }
+        : null;
+      response.data.products[index] = {
+        ...product.toObject(),
+        user_information: userInformation,
+      };
+      if (index == 1) {
+        console.log(
+          `\n\nRESPONSE AT INDEX ${index} is:\n${JSON.stringify(
+            response.data.products[index]
+          )}`
+        );
+      }
     });
 
     return response.data;
@@ -186,11 +198,34 @@ async function searchAndDisplayProducts(searchTerm, req, res) {
       }
     } else {
       // Retrieve data by search term
-      const productsData = await displayProductsBySearchTerm(searchTerm);
+      const productsData = await displayProductsBySearchTerm(searchTerm, req);
       return res.status(200).json(productsData);
     }
   } catch (error) {
     console.error("Error searching product:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// Add product by barcode to the database and user
+async function addProductByBarcode(req, res) {
+  try {
+    const { barcode } = req.params;
+    // Retrieve product data from OpenFoodFacts API endpoint
+    const productData = await fetchOFFProductByBarcode(barcode);
+    // Format and Insert the response into  the local database standard
+    const product = formatProductData(productData);
+    await InsertToProductsDB(product);
+
+    // Get the user ID from the JWT token in the request cookies
+    const user = getUserFromToken(req);
+    await InsertToUsersDB(user, product);
+
+    return res.status(200).json({
+      message: "Product updated/saved and added to user successfully",
+    });
+  } catch (error) {
+    console.error("Error searching and inserting product by barcode:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
