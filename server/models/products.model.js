@@ -1,11 +1,17 @@
 import mongoose from "mongoose";
+import axios from "axios";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 import productsSchema from "../schemas/products.schema.js";
+import UserModel from "./users.model.js";
+import { ObjectId } from "mongodb";
+import { getUserFromToken } from "../utils/auth.js";
 
 //Use correct database from the database connection
 const database = mongoose.connection.useDb("foods");
-const Products = database.model("Products", productsSchema);
+const ProductModel = database.model("Products", productsSchema);
 
-Products.getProducts = async function ({ filters, page, foodsPerPage }) {
+ProductModel.getProducts = async function ({ filters, page, foodsPerPage }) {
   const query = {};
 
   // Apply filters if present
@@ -30,4 +36,183 @@ Products.getProducts = async function ({ filters, page, foodsPerPage }) {
   return { productsList, totalNumProducts };
 };
 
-export default Products;
+// Fetch product by barcode from OpenFoodFacts
+ProductModel.fetchOFFProductByBarcode = async function (barcode) {
+  const response = await axios.get(
+    `https://world.openfoodfacts.net/api/v2/product/${barcode}.json`,
+    {
+      timeout: 30000,
+    }
+  );
+  return response.data.product;
+};
+
+// Fetch products by search term from OpenFoodFacts
+ProductModel.fetchOFFProductsBySearch = async function (searchTerm) {
+  const response = await axios.get(
+    `https://world.openfoodfacts.net/cgi/search.pl?&search_terms=${searchTerm}&json=1`,
+    {
+      timeout: 30000,
+    }
+  );
+  return response;
+};
+
+// Insert product to database, updating if it already exists
+ProductModel.InsertToProductsDB = async function (product) {
+  const existingProduct = await this.findById(product._id);
+  if (existingProduct) {
+    await this.findByIdAndUpdate(product._id, product.toObject());
+    console.log(`Updated existing product with _id: ${product._id}`);
+  } else {
+    await product.save();
+    console.log(`Saved new product with _id: ${product._id}`);
+  }
+};
+
+// Insert product to user's list of foods
+ProductModel.InsertToUsersDB = async function (user, product) {
+  const userProducts = await UserModel.getUserFoods(user.id);
+  // Check if product is already added to the user's foods
+  if (!userProducts.products.some((up) => up._id.equals(product._id))) {
+    await UserModel.addProductToUserFoods(user.id, {
+      _id: product._id,
+      added_at: new Date(),
+    });
+  }
+};
+
+// Format product data to match the database schema
+ProductModel.formatProductData = function (responseProduct) {
+  const paddedId = this.formatId(responseProduct._id);
+  const product = new this({
+    _id: paddedId,
+    food_name: responseProduct.product_name,
+    image_url: responseProduct.image_thumb_url,
+    obsolete_since_date: responseProduct.obsolete_since_date,
+    product_quantity: responseProduct.product_quantity,
+    product_quantity_unit: responseProduct.product_quantity_unit,
+    product_information: responseProduct.product_information,
+    nutriments: responseProduct.nutriments,
+    allergens_tags: responseProduct.allergens_tags,
+    traces_tags: responseProduct.traces_tags,
+    unknown_ingredients_n: responseProduct.unknown_ingredients_n,
+    vitamins_tags: responseProduct.vitamins_tags,
+    states_tags: responseProduct.states_tags,
+    ingredients_tags: responseProduct.ingredients_tags,
+    ingredients_analysis_tags: responseProduct.ingredients_analysis_tags,
+  });
+  return product;
+};
+
+ProductModel.displayProductByBarcode = async function (barcode, req) {
+  try {
+    // Get the user ID from the JWT token in the request cookies
+    const user = getUserFromToken(req);
+
+    // Fetch user-specific foods from the database
+    const userFoods = await UserModel.getUserFoods(user.id);
+
+    // Create a map of user foods for quick lookup
+    const userProductsMap = new Map(
+      userFoods.products.map((product) => [product._id.toString(), product])
+    );
+
+    // Fetch product data from OpenFoodFacts API endpoint
+    const productData = await this.fetchOFFProductByBarcode(barcode);
+    // Handle product not found scenario
+    if (!productData) {
+      return { products: [] };
+    }
+
+    // Format the product data from the external API
+    const product = this.formatProductData(productData);
+
+    // Retrieve user-specific details using map lookup
+    const userProduct = userProductsMap.get(product._id.toString());
+
+    // Initialize user information object with fallback logic
+    const userInformation = userProduct
+      ? {
+          added_at: userProduct.added_at || null,
+          in_list: userProduct.in_list || null,
+          my_serving_size: userProduct.my_serving_size || null,
+        }
+      : null;
+
+    // Format and return the product data
+    return {
+      products: [
+        {
+          ...product.toObject(),
+          user_information: userInformation,
+        },
+      ],
+    };
+  } catch (error) {
+    console.error("Error displaying product by barcode:", error);
+    throw new Error(`Error displaying product by barcode: ${error.message}`);
+  }
+};
+
+ProductModel.displayProductsBySearchTerm = async function (searchTerm, req) {
+  try {
+    // Get the user ID from the JWT token in the request cookies
+    const user = getUserFromToken(req);
+
+    // Fetch user-specific foods from the database
+    const userFoods = await UserModel.getUserFoods(user.id);
+
+    // Create a map of user foods for quick lookup
+    const userProductsMap = new Map(
+      userFoods.products.map((product) => [product._id.toString(), product])
+    );
+
+    // Fetch products data from OpenFoodFacts API endpoint
+    const response = await this.fetchOFFProductsBySearch(searchTerm);
+    // Handle product not found scenario
+    if (!response) {
+      return { products: [] };
+    }
+
+    // Format the response to local database standard
+    response.data.products.forEach((productData, index) => {
+      const product = this.formatProductData(productData);
+      // Retrieve user-specific details using map lookup
+      const userProduct = userProductsMap.get(product._id.toString());
+      // Initialize user information object with fallback logic
+      const userInformation = userProduct
+        ? {
+            added_at: userProduct.added_at || null,
+            in_list: userProduct.in_list || null,
+            my_serving_size: userProduct.my_serving_size || null,
+          }
+        : null;
+      response.data.products[index] = {
+        ...product.toObject(),
+        user_information: userInformation,
+      };
+      if (index == 1) {
+        console.log(
+          `\n\nRESPONSE AT INDEX ${index} is:\n${JSON.stringify(
+            response.data.products[index]
+          )}`
+        );
+      }
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error searching product by search term:", error);
+    throw error;
+  }
+};
+
+// Converts a string into a 24 character ObjectId
+ProductModel.formatId = function (_id) {
+  const paddedId = _id.padStart(24, "0");
+  const objectId = ObjectId.createFromHexString(paddedId);
+  return objectId;
+};
+
+export default ProductModel;
