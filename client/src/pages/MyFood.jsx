@@ -57,6 +57,20 @@ export default function MyFood() {
                 <pre>{JSON.stringify(food.nutriments, null, 2)}</pre>
               </div>
             )}
+            {food.user_information && (
+              <div>
+                <p><strong>User Information:</strong></p>
+                {food.user_information.added_at && (
+                  <p>Added on: {new Date(food.user_information.added_at).toLocaleString()}</p>
+                )}
+                {food.user_information.in_list && (
+                  <p>In list: {food.user_information.in_list}</p>
+                )}
+                {food.user_information.my_serving_size && (
+                  <p>My serving size: {food.user_information.my_serving_size}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       ))}

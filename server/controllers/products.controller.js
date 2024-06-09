@@ -8,109 +8,244 @@ import { getUserFromToken } from "../utils/auth.js";
 
 dotenv.config();
 
-async function searchAndUpdateProductByBarcode(req, res) {
-  try {
-    const { barcode } = req.params;
-
-    const response = await axios.get(
-      `https://world.openfoodfacts.net/api/v2/product/${barcode}.json`,
-      {
-        timeout: 30000,
-      }
-    );
-
-    // Format the response to local database standard
-    const objectId = formatId(response.data.product._id);
-    const product = formatResponse(response.data.product, objectId);
-
-    // Check if the product already exists in the database
-    let existingProduct = await Product.findById(objectId);
-    if (existingProduct) {
-      // Update existing product
-      await Product.findByIdAndUpdate(objectId, product.toObject());
-      console.log(`Updated existing product with _id: ${objectId}`);
-    } else {
-      // Save the product into the database
-      existingProduct = await product.save();
-      console.log(`Saved new product with _id: ${objectId}`);
+// Fetch product by barcode from OpenFoodFacts
+async function fetchOFFProductByBarcode(barcode) {
+  const response = await axios.get(
+    `https://world.openfoodfacts.net/api/v2/product/${barcode}.json`,
+    {
+      timeout: 30000,
     }
+  );
+  return response.data.product;
+}
 
-    // Get the user ID from the JWT token in the request cookies
-    const { token } = req.cookies;
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized" });
+// Fetch products by search term from OpenFoodFacts
+async function fetchOFFProductsBySearch(searchTerm) {
+  const response = await axios.get(
+    `https://world.openfoodfacts.net/cgi/search.pl?&search_terms=${searchTerm}&json=1`,
+    {
+      timeout: 30000,
     }
+  );
+  return response;
+}
 
-    const user = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Update user's foods array with product ID
-    await UserModel.addProductToUserFoods(user.id, {
-      _id: objectId,
-    });
-
-    return res.status(200).json({
-      message: "Product updated/saved and added to user successfully",
-      product: existingProduct,
-    });
-  } catch (error) {
-    console.error("Error searching product by barcode:", error);
-    return res.status(500).json({ error: "Internal server error" });
+// Insert product to database, updating if it already exists
+async function InsertToProductsDB(product) {
+  const existingProduct = await Product.findById(product._id);
+  if (existingProduct) {
+    await Product.findByIdAndUpdate(product._id, product.toObject());
+    console.log(`Updated existing product with _id: ${product._id}`);
+  } else {
+    await product.save();
+    console.log(`Saved new product with _id: ${product._id}`);
   }
 }
 
-async function searchAndDisplayProducts(searchTerm) {
+// Insert product to user's list of foods
+async function InsertToUsersDB(user, product) {
+  const userProducts = await UserModel.getUserFoods(user.id);
+  // Check if product is already added to the user's foods
+  if (!userProducts.products.some((up) => up._id.equals(product._id))) {
+    await UserModel.addProductToUserFoods(user.id, {
+      _id: product._id,
+      added_at: new Date(),
+    });
+  }
+}
+
+// Format product data to match the database schema
+function formatProductData(responseProduct) {
+  const paddedId = formatId(responseProduct._id);
+  const product = new Product({
+    _id: paddedId,
+    food_name: responseProduct.product_name,
+    image_url: responseProduct.image_thumb_url,
+    obsolete_since_date: responseProduct.obsolete_since_date,
+    product_quantity: responseProduct.product_quantity,
+    product_quantity_unit: responseProduct.product_quantity_unit,
+    product_information: responseProduct.product_information,
+    nutriments: responseProduct.nutriments,
+    allergens_tags: responseProduct.allergens_tags,
+    traces_tags: responseProduct.traces_tags,
+    unknown_ingredients_n: responseProduct.unknown_ingredients_n,
+    vitamins_tags: responseProduct.vitamins_tags,
+    states_tags: responseProduct.states_tags,
+    ingredients_tags: responseProduct.ingredients_tags,
+    ingredients_analysis_tags: responseProduct.ingredients_analysis_tags,
+  });
+  return product;
+}
+
+async function displayProductByBarcode(barcode, req) {
   try {
-    const response = await axios.get(
-      `https://world.openfoodfacts.net/cgi/search.pl?&search_terms=${searchTerm}&json=1`,
-      {
-        timeout: 30000,
-      }
+    // Get the user ID from the JWT token in the request cookies
+    const user = getUserFromToken(req);
+
+    // Fetch user-specific foods from the database
+    const userFoods = await UserModel.getUserFoods(user.id);
+
+    // Create a map of user foods for quick lookup
+    const userProductsMap = new Map(
+      userFoods.products.map((product) => [product._id.toString(), product])
     );
+
+    // Fetch product data from OpenFoodFacts API endpoint
+    const productData = await fetchOFFProductByBarcode(barcode);
+    // Handle product not found scenario
+    if (!productData) {
+      return { products: [] };
+    }
+
+    // Format the product data from the external API
+    const product = formatProductData(productData);
+
+    // Retrieve user-specific details using map lookup
+    const userProduct = userProductsMap.get(product._id.toString());
+
+    // Initialize user information object with fallback logic
+    const userInformation = userProduct
+      ? {
+          added_at: userProduct.added_at || null,
+          in_list: userProduct.in_list || null,
+          my_serving_size: userProduct.my_serving_size || null,
+        }
+      : null;
+
+    // Format and return the product data
+    return {
+      products: [
+        {
+          ...product.toObject(),
+          user_information: userInformation,
+        },
+      ],
+    };
+  } catch (error) {
+    console.error("Error displaying product by barcode:", error);
+    throw new Error(`Error displaying product by barcode: ${error.message}`);
+  }
+}
+
+async function displayProductsBySearchTerm(searchTerm, req) {
+  try {
+    // Get the user ID from the JWT token in the request cookies
+    const user = getUserFromToken(req);
+
+    // Fetch user-specific foods from the database
+    const userFoods = await UserModel.getUserFoods(user.id);
+
+    // Create a map of user foods for quick lookup
+    const userProductsMap = new Map(
+      userFoods.products.map((product) => [product._id.toString(), product])
+    );
+
+    // Fetch products data from OpenFoodFacts API endpoint
+    const response = await fetchOFFProductsBySearch(searchTerm);
+    // Handle product not found scenario
+    if (!response) {
+      return { products: [] };
+    }
 
     // Format the response to local database standard
     response.data.products.forEach((productData, index) => {
-      const objectId = formatId(productData._id);
-      const product = formatResponse(productData, objectId);
-      response.data.products[index] = product;
+      const product = formatProductData(productData);
+      // Retrieve user-specific details using map lookup
+      const userProduct = userProductsMap.get(product._id.toString());
+      // Initialize user information object with fallback logic
+      const userInformation = userProduct
+        ? {
+            added_at: userProduct.added_at || null,
+            in_list: userProduct.in_list || null,
+            my_serving_size: userProduct.my_serving_size || null,
+          }
+        : null;
+      response.data.products[index] = {
+        ...product.toObject(),
+        user_information: userInformation,
+      };
+      if (index == 1) {
+        console.log(
+          `\n\nRESPONSE AT INDEX ${index} is:\n${JSON.stringify(
+            response.data.products[index]
+          )}`
+        );
+      }
     });
 
     return response.data;
   } catch (error) {
-    console.error("Error searching product by barcode:", error);
+    console.error("Error searching product by search term:", error);
     throw error;
   }
 }
 
+async function searchAndDisplayProducts(searchTerm, req, res) {
+  try {
+    // Check if the searchTerm is a barcode
+    const isBarcode = /^\d+$/.test(searchTerm.trim());
+    if (
+      isBarcode &&
+      searchTerm.trim().length >= 8 &&
+      searchTerm.trim().length <= 14
+    ) {
+      // Retrieve product by barcode
+      const product = await displayProductByBarcode(searchTerm, req);
+      if (product) {
+        return res.status(200).json(product);
+      } else {
+        return res.status(404).send("Product not found");
+      }
+    } else {
+      // Retrieve data by search term
+      const productsData = await displayProductsBySearchTerm(searchTerm, req);
+      return res.status(200).json(productsData);
+    }
+  } catch (error) {
+    console.error("Error searching product:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// Add product by barcode to the database and user
+async function addProductByBarcode(req, res) {
+  try {
+    const { barcode } = req.params;
+    // Retrieve product data from OpenFoodFacts API endpoint
+    const productData = await fetchOFFProductByBarcode(barcode);
+    // Format and Insert the response into  the local database standard
+    const product = formatProductData(productData);
+    await InsertToProductsDB(product);
+
+    // Get the user ID from the JWT token in the request cookies
+    const user = getUserFromToken(req);
+    await InsertToUsersDB(user, product);
+
+    return res.status(200).json({
+      message: "Product updated/saved and added to user successfully",
+    });
+  } catch (error) {
+    console.error("Error searching and inserting product by barcode:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
 // add the product into the product database and the users database
-async function addCurrentProductToDatabase(req, res) {
+// required the product information to be in the state
+async function addProductBySelection(req, res) {
   try {
     // Extract product data from request body
     const { productId, ...productData } = req.body;
 
-    // Check if product exists in the database
-    let existingProduct = await Product.findById(productId);
-
-    // Save or update existing product
-    if (existingProduct) {
-      await Product.findByIdAndUpdate(productId, productData);
-      console.log(`Updated existing product with _id: ${productId}`);
-    } else {
-      const newProduct = new Product({ _id: productId, ...productData });
-      existingProduct = await newProduct.save();
-      console.log(`Saved new product with _id: ${productId}`);
-    }
+    //
+    const product = new Product({ _id: productId, ...productData });
+    await InsertToProductsDB(product);
 
     // Get the user ID from the JWT token in the request cookies
     const user = getUserFromToken(req);
 
-    // Check that the food isn't already in the user's food array
-
-    // Format the response to local database standard
-    const objectId = formatId(productId);
-    // Update user's foods array with product ID
-    await UserModel.addProductToUserFoods(user.id, {
-      _id: objectId,
-    });
+    //
+    await InsertToUsersDB(user, product);
 
     return res.status(200).json({
       message: "Product updated/saved and added to user successfully",
@@ -121,49 +256,40 @@ async function addCurrentProductToDatabase(req, res) {
   }
 }
 
-async function getUserFoods(req, res) {
-  try {
-    // Get the user ID from the JWT token in the request cookies
-    const { token } = req.cookies;
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    const user = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Retrieve user's foods
-    const userFoods = await UserModel.getUserFoods(user.id);
-
-    return res.status(200).json({
-      foods: userFoods,
-    });
-  } catch (error) {
-    console.error("Error retrieving user's foods:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-}
-
 async function getUserProductDetails(req, res) {
   try {
     // Get the user ID from the JWT token in the request cookies
     const user = getUserFromToken(req);
-
     // Retrieve user's foods
     const userFoods = await UserModel.getUserFoods(user.id);
 
-    // Extract products list
-    const productIds = userFoods.products.map((product) => ({
+    // Extract products list with user-specific details
+    const userProducts = userFoods.products.map((product) => ({
       _id: product._id,
+      added_at: product.added_at,
+      in_list: product.in_list,
+      my_serving_size: product.my_serving_size,
     }));
 
     // Fetch full product data for each product ID
-    const products = await Product.find({ _id: { $in: productIds } });
+    const productIds = userProducts.map((product) => product._id);
+    const products = await Product.find({ _id: { $in: productIds } }).lean();
 
-    // Combine user foods information to retrieved products information
-    // TODO
+    // Combine user-specific information with product details
+    const combinedProducts = products.map((product) => {
+      const userProduct = userProducts.find((up) => up._id.equals(product._id));
+      return {
+        ...product,
+        user_information: {
+          added_at: userProduct.added_at,
+          in_list: userProduct.in_list,
+          my_serving_size: userProduct.my_serving_size,
+        },
+      };
+    });
 
     return res.status(200).json({
-      products: products,
+      products: combinedProducts,
     });
   } catch (error) {
     console.error("Error retrieving user's product details:", error);
@@ -178,51 +304,9 @@ function formatId(_id) {
   return objectId;
 }
 
-function formatResponse(responseProduct, paddedId) {
-  // Deconstruct and extract relevant data
-  const productInfo = responseProduct;
-  const {
-    product_name,
-    image_thumb_url,
-    obsolete_since_date,
-    product_quantity,
-    product_quantity_unit,
-    product_information,
-    nutriments,
-    allergens_tags,
-    traces_tags,
-    unknown_ingredients_n,
-    vitamins_tags,
-    states_tags,
-    ingredients_tags,
-    ingredients_analysis_tags,
-  } = productInfo;
-
-  // Create a new product object including the formatted Id
-  const product = new Product({
-    _id: paddedId,
-    food_name: product_name,
-    image_url: image_thumb_url,
-    obsolete_since_date,
-    product_quantity,
-    product_quantity_unit,
-    product_information,
-    nutriments,
-    allergens_tags,
-    traces_tags,
-    unknown_ingredients_n,
-    vitamins_tags,
-    states_tags,
-    ingredients_tags,
-    ingredients_analysis_tags,
-  });
-
-  return product;
-}
-
 export {
-  searchAndUpdateProductByBarcode,
+  addProductByBarcode,
   searchAndDisplayProducts,
-  addCurrentProductToDatabase,
+  addProductBySelection,
   getUserProductDetails,
 };
