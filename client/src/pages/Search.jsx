@@ -3,17 +3,12 @@ import { UserContext } from "../../context/user.context";
 import axios from "axios";
 // import Spinner from "../Spinner";
 
-//todo:
-//get the users foods for products list
-//check if any of the _id match any in the list
-//
-//store user foods with timestamp, favorite, and catagories like dinner, snack, breakfast, food prep etc.
-
 export default function Search() {
   const { user, fetchUserProfile } = useContext(UserContext);
   const [foods, setFoods] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!user) {
@@ -25,6 +20,7 @@ export default function Search() {
     e.preventDefault();
     try {
       setLoading(true);
+      setError(null);
       const response = await axios.get(
         `/api/v1/products/search?query=${searchTerm}`,
         {
@@ -34,6 +30,12 @@ export default function Search() {
       setFoods(response.data.products);
     } catch (error) {
       console.error("Error fetching user foods:", error);
+      // Set appropriate error message
+      if (error.response && error.response.status === 429) {
+        setError("Rate limit reached. Please try again later.");
+      } else {
+        setError("An error occurred while fetching products.");
+      }
     } finally {
       setLoading(false);
     }
@@ -80,6 +82,9 @@ export default function Search() {
           />
           <button type="submit">Search Product</button>
         </form>
+        {error && (
+          <div style={{ color: "red", marginTop: "10px" }}>{error}</div>
+        )}
       </div>
       {foods.length > 0 && (
         <div>
