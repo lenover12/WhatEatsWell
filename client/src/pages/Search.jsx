@@ -2,6 +2,7 @@ import { useState, useContext, useEffect } from "react";
 import { UserContext } from "../../context/user.context";
 import axios from "axios";
 // import Spinner from "../Spinner";
+import { toast } from "react-hot-toast";
 
 export default function Search() {
   const { user, fetchUserProfile } = useContext(UserContext);
@@ -55,10 +56,10 @@ export default function Search() {
           withCredentials: true,
         }
       );
-      alert("Food added successfully!");
+      toast.success("Food added successfully!");
     } catch (error) {
       console.error("Error adding food to database:", error);
-      alert("Failed to add food.");
+      toast.error("Failed to add food.");
     }
   };
 
