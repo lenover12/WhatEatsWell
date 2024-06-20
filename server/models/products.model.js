@@ -135,9 +135,19 @@ ProductModel.formatProductData = function (responseProduct) {
 
 ProductModel.displayProductByBarcode = async function (barcode, req) {
   try {
+    // Ensure barcode and request are provided
+    if (!barcode) {
+      throw new Error("Barcode is required");
+    }
+
+    if (!req || !req.cookies || !req.cookies.token) {
+      throw new Error("Authorization token is missing");
+    }
     // Get the user ID from the JWT token in the request cookies
     const user = getUserFromToken(req);
-
+    if (!user || !user.id) {
+      throw new Error("Invalid user authentication");
+    }
     // Fetch user-specific foods from the database
     const userFoods = await UserModel.getUserFoods(user.id);
 
@@ -148,6 +158,9 @@ ProductModel.displayProductByBarcode = async function (barcode, req) {
 
     // Fetch product data from OpenFoodFacts API endpoint
     const productData = await this.fetchOFFProductByBarcode(barcode);
+    if (!productData || Object.keys(productData).length === 0) {
+      throw new Error("Products not found in OpenFoodFacts database");
+    }
 
     // Format the product data from the external API
     const product = this.formatProductData(productData);
@@ -174,22 +187,32 @@ ProductModel.displayProductByBarcode = async function (barcode, req) {
       ],
     };
   } catch (error) {
-    if (error.message === "OpenFoodFacts API rate limit reached") {
-      return {
-        products: [],
-        error: "Rate limit reached. Please try again later.",
-      };
-    }
+    console.error(
+      `Error displaying product by barcode: ${error.response.status} ${error.response.statusText}`
+    );
 
-    console.error("Error displaying product by barcode:", error);
-    throw new Error(`Error displaying product by barcode: ${error.message}`);
+    return {
+      products: [],
+      error: error,
+    };
   }
 };
 
 ProductModel.displayProductsBySearchTerm = async function (searchTerm, req) {
   try {
+    // Ensure barcode and request are provided
+    if (!searchTerm) {
+      throw new Error("Search Term is required");
+    }
+
+    if (!req || !req.cookies || !req.cookies.token) {
+      throw new Error("Authorization token is missing");
+    }
     // Get the user ID from the JWT token in the request cookies
     const user = getUserFromToken(req);
+    if (!user || !user.id) {
+      throw new Error("Invalid user authentication");
+    }
 
     // Fetch user-specific foods from the database
     const userFoods = await UserModel.getUserFoods(user.id);
@@ -201,6 +224,9 @@ ProductModel.displayProductsBySearchTerm = async function (searchTerm, req) {
 
     // Fetch products data from OpenFoodFacts API endpoint
     const productsData = await this.fetchOFFProductsBySearch(searchTerm);
+    if (!productsData || productsData.data.count === 0) {
+      throw new Error("Products not found in OpenFoodFacts database");
+    }
 
     // Format the productsData to local database standard
     productsData.data.products.forEach((productData, index) => {
@@ -223,15 +249,12 @@ ProductModel.displayProductsBySearchTerm = async function (searchTerm, req) {
 
     return productsData.data;
   } catch (error) {
-    if (error.message === "OpenFoodFacts API rate limit reached") {
-      return {
-        products: [],
-        error: "Rate limit reached. Please try again later.",
-      };
-    }
-
     console.error("Error searching product by search term:", error);
-    throw error;
+
+    return {
+      products: [],
+      error: error,
+    };
   }
 };
 

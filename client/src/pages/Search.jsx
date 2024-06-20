@@ -20,6 +20,7 @@ export default function Search() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setFoods([])
       setLoading(true);
       setError(null);
       const response = await axios.get(
@@ -28,12 +29,21 @@ export default function Search() {
           withCredentials: true,
         }
       );
-      setFoods(response.data.products);
+      if (response.status === 200) {
+        setFoods(response.data.products);
+      }
     } catch (error) {
       console.error("Error fetching user foods:", error);
-      // Set appropriate error message
-      if (error.response && error.response.status === 429) {
-        setError("Rate limit reached. Please try again later.");
+      if (error.response) {
+        if (error.response.status === 401) {
+          setError("Authorization Error: Please log in again");
+        } else if (error.response.status === 429) {
+          setError("Rate limit reached. Please try again later.");
+        } else if (error.response.status === 400 || error.response.status === 404) {
+          setError(`Products not found in OpenFoodFacts database.`);
+        } else {
+          setError("An unexpected error occurred while fetching products.");
+        }
       } else {
         setError("An error occurred while fetching products.");
       }
