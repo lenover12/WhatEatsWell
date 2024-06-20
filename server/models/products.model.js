@@ -56,8 +56,10 @@ ProductModel.fetchOFFProductByBarcode = async function (barcode) {
     if (error.response && error.response.status === 500) {
       // Return specific error message for rate limit issues from OpenFoodFacts
       throw new Error("OpenFoodFacts API rate limit reached");
-    }
-    throw error;
+    } else if (error.response && error.reponse.status === 404) {
+      // Return specific error message for product not found
+      throw new Error("Products not found in OpenFoodFacts database.");
+    } else throw error;
   }
 };
 
@@ -158,6 +160,7 @@ ProductModel.displayProductByBarcode = async function (barcode, req) {
 
     // Fetch product data from OpenFoodFacts API endpoint
     const productData = await this.fetchOFFProductByBarcode(barcode);
+
     if (!productData || Object.keys(productData).length === 0) {
       throw new Error("Products not found in OpenFoodFacts database");
     }
@@ -187,14 +190,8 @@ ProductModel.displayProductByBarcode = async function (barcode, req) {
       ],
     };
   } catch (error) {
-    console.error(
-      `Error displaying product by barcode: ${error.response.status} ${error.response.statusText}`
-    );
-
-    return {
-      products: [],
-      error: error,
-    };
+    // Propagate the error to the controller
+    throw error;
   }
 };
 
@@ -224,6 +221,7 @@ ProductModel.displayProductsBySearchTerm = async function (searchTerm, req) {
 
     // Fetch products data from OpenFoodFacts API endpoint
     const productsData = await this.fetchOFFProductsBySearch(searchTerm);
+
     if (!productsData || productsData.data.count === 0) {
       throw new Error("Products not found in OpenFoodFacts database");
     }
@@ -249,12 +247,8 @@ ProductModel.displayProductsBySearchTerm = async function (searchTerm, req) {
 
     return productsData.data;
   } catch (error) {
-    console.error("Error searching product by search term:", error);
-
-    return {
-      products: [],
-      error: error,
-    };
+    // Propagate the error to the controller
+    throw error;
   }
 };
 

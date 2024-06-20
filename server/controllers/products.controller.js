@@ -27,36 +27,40 @@ async function searchAndDisplayProducts(req, res) {
       );
     }
 
-    // Check for specific error messages and handle accordingly
-    if (productData.error) {
-      if (productData.error === "Authorization token is missing") {
-        return res.status(401).json({
-          error: `${productData.error}`,
-          products: [],
-        });
-      }
-      if (productData.error === "OpenFoodFacts API rate limit reached") {
-        return res.status(429).json({
-          error: `${productData.error}. Please try again later.`,
-          products: [],
-        });
-      }
-      // If no product(s) data returned
-      if (Object.keys(productData).length === 0) {
-        return res.status(404).json({
-          error: `Products not found in OpenFoodFacts database`,
-          products: [],
-        });
-      }
-      return res.status(400).json({
-        error: `Products not found in OpenFoodFacts database`,
-        products: [],
-      });
+    // // any errors that slipped through propagation
+    // if (productData.error) {
+    //   throw productData.error;
+    // }
+
+    if (Object.keys(productData).length === 0) {
+      throw new Error("Products not found in OpenFoodFacts database");
     }
+
     // Successful response
     return res.status(200).json(productData);
   } catch (error) {
-    console.error("Error searching product:", error);
+    // Centralized error handling
+    if (error.message === "Authorization token is missing") {
+      return res.status(401).json({
+        error: error.message,
+        products: [],
+      });
+    }
+
+    if (error.message === "Products not found in OpenFoodFacts database") {
+      return res.status(404).json({
+        error: error.message,
+        products: [],
+      });
+    }
+
+    if (error.message === "OpenFoodFacts API rate limit reached") {
+      return res.status(429).json({
+        error: error.message,
+        products: [],
+      });
+    }
+
     // Generic internal server error handler
     return res.status(500).json({
       error: "Internal server error. Please try again later.",

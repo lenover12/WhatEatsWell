@@ -41,11 +41,9 @@ export default function Search() {
           setError("Rate limit reached. Please try again later.");
         } else if (error.response.status === 400 || error.response.status === 404) {
           setError(`Products not found in OpenFoodFacts database.`);
-        } else {
-          setError("An unexpected error occurred while fetching products.");
-        }
+        } 
       } else {
-        setError("An error occurred while fetching products.");
+        setError("An unexpected occurred while fetching products.");
       }
     } finally {
       setLoading(false);
