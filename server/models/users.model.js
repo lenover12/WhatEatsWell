@@ -128,7 +128,11 @@ const UsersModel = {
       if (!user) {
         throw new Error("User not found");
       }
-      return user.foods;
+      // Ensure foods.products and foods.wholefoods are arrays
+      return {
+        products: user.foods.products || [],
+        wholefoods: user.foods.wholefoods || [],
+      };
     } catch (error) {
       throw new Error(`Error retrieving user's foods: ${error.message}`);
     }
