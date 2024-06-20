@@ -129,54 +129,129 @@ test.serial(
   }
 );
 
-// Tests for displayProductByBarcode handles generic thrown error
 test.serial(
-  "displayProductByBarcode handles generic thrown error",
+  "displayProductByBarcode throws error when barcode is missing",
   async (t) => {
     sinon.stub(jwt, "verify").callsFake(mockGetUserFromToken);
 
-    // Mock UserModel.getUserFoods to return a fixed set of data
-    sinon.stub(UserModel, "getUserFoods").resolves(sampleUserFoods);
+    t.teardown(() => sinon.restore());
 
-    sinon.stub(axios, "get").rejects(new Error("Generic error"));
+    const req = { cookies: { token: "sample_token" } };
 
-    await t.throwsAsync(
-      () =>
-        ProductsModel.displayProductByBarcode("9310072030821", {
-          cookies: { token: "sample_token" },
-        }),
-      {
-        instanceOf: Error,
-        message: "Error displaying product by barcode: Generic error",
-      }
+    const error = await t.throwsAsync(() =>
+      ProductsModel.displayProductByBarcode(null, req)
     );
 
-    sinon.restore();
+    t.is(error.message, "Barcode is required");
   }
 );
 
-// Tests for displayProductByBarcode handles rate limit error
-test.serial("displayProductByBarcode handles rate limit error", async (t) => {
-  sinon.restore();
-  // Mock the axios.get method to throw an error with a specific message
-  sinon.stub(jwt, "verify").callsFake(mockGetUserFromToken);
+test.serial(
+  "displayProductByBarcode throws error when authorization token is missing",
+  async (t) => {
+    const req = { cookies: {} };
 
+    const error = await t.throwsAsync(() =>
+      ProductsModel.displayProductByBarcode("9310072030821", req)
+    );
+
+    t.is(error.message, "Authorization token is missing");
+  }
+);
+
+test.serial(
+  "displayProductByBarcode throws error when user authentication is invalid",
+  async (t) => {
+    sinon.stub(jwt, "verify").callsFake(() => null);
+
+    t.teardown(() => sinon.restore());
+
+    const req = { cookies: { token: "sample_token" } };
+
+    const error = await t.throwsAsync(() =>
+      ProductsModel.displayProductByBarcode("9310072030821", req)
+    );
+
+    t.is(error.message, "Invalid user authentication");
+  }
+);
+
+test.serial("displayProductByBarcode fetches user foods", async (t) => {
+  sinon.stub(jwt, "verify").callsFake(mockGetUserFromToken);
   // Mock UserModel.getUserFoods to return a fixed set of data
   sinon.stub(UserModel, "getUserFoods").resolves(sampleUserFoods);
 
-  // Mock avios.get to simulate API rate limit error
+  // Set the user
+  const user = mockUser;
+
   sinon
-    .stub(axios, "get")
-    .rejects(new Error("OpenFoodFacts API rate limit reached"));
+    .stub(ProductsModel, "fetchOFFProductByBarcode")
+    .resolves(sampleProductData);
 
-  const result = await ProductsModel.displayProductByBarcode("9310072030821", {
-    cookies: { token: "sample_token" },
-  });
+  t.teardown(() => sinon.restore());
 
-  t.deepEqual(result, {
-    products: [],
-    error: "Rate limit reached. Please try again later.",
-  });
+  const req = { cookies: { token: "sample_token" } };
 
-  sinon.restore();
+  await ProductsModel.displayProductByBarcode("9310072030821", req);
+
+  t.true(UserModel.getUserFoods.calledWith(user.id));
 });
+
+test.serial(
+  "displayProductByBarcode throws error when product not found",
+  async (t) => {
+    sinon.stub(jwt, "verify").callsFake(mockGetUserFromToken);
+    // Mock UserModel.getUserFoods to return a fixed set of data
+    sinon.stub(UserModel, "getUserFoods").resolves(sampleUserFoods);
+    sinon.stub(ProductsModel, "fetchOFFProductByBarcode").resolves({});
+
+    t.teardown(() => sinon.restore());
+
+    const error = await t.throwsAsync(() =>
+      ProductsModel.displayProductByBarcode("9310072030821", {
+        cookies: { token: "sample_token" },
+      })
+    );
+
+    t.is(error.message, "Products not found in OpenFoodFacts database");
+  }
+);
+
+test.serial(
+  "displayProductByBarcode returns formatted product data",
+  async (t) => {
+    const formattedProduct = {
+      _id: "000000000009310072030821",
+      toObject: () => ({ _id: "000000000009310072030821" }),
+    };
+
+    sinon.stub(jwt, "verify").callsFake(mockGetUserFromToken);
+    sinon.stub(UserModel, "getUserFoods").resolves(sampleUserFoods);
+    sinon
+      .stub(ProductsModel, "fetchOFFProductByBarcode")
+      .resolves(sampleProductData);
+    sinon.stub(ProductsModel, "formatProductData").returns(formattedProduct);
+
+    t.teardown(() => sinon.restore());
+
+    const req = { cookies: { token: "sample_token" } };
+
+    const result = await ProductsModel.displayProductByBarcode(
+      "9310072030821",
+      req
+    );
+
+    t.deepEqual(result, {
+      products: [
+        {
+          _id: "000000000009310072030821",
+          user_information: {
+            added_at: sampleUserFoods.products[0].added_at,
+            in_list: "snack",
+            my_serving_size: 50,
+          },
+        },
+      ],
+    });
+  }
+);
