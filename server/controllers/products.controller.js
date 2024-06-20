@@ -8,39 +8,60 @@ async function searchAndDisplayProducts(req, res) {
 
     // Check if the searchTerm is a barcode
     const isBarcode = /^\d+$/.test(searchTerm.trim());
+
+    let productData;
+
     if (
       isBarcode &&
       searchTerm.trim().length >= 8 &&
       searchTerm.trim().length <= 14
     ) {
-      // Retrieve product by barcode
-      const product = await ProductsModel.displayProductByBarcode(
+      productData = await ProductsModel.displayProductByBarcode(
         searchTerm,
         req
       );
-      if (Object.keys(product).length === 0) {
-        return res.status(404).send("Product not found");
-      } else if (product.error) {
-        return res.status(429).json({ error: product.error });
-      } else {
-        return res.status(200).json(product);
-      }
     } else {
-      // Retrieve data by search term
-      const productsData = await ProductsModel.displayProductsBySearchTerm(
+      productData = await ProductsModel.displayProductsBySearchTerm(
         searchTerm,
         req
       );
-
-      if (productsData.error) {
-        return res.status(429).json({ error: productsData.error });
-      }
-
-      return res.status(200).json(productsData);
     }
+
+    // Check for specific error messages and handle accordingly
+    if (productData.error) {
+      if (productData.error === "Authorization token is missing") {
+        return res.status(401).json({
+          error: `${productData.error}`,
+          products: [],
+        });
+      }
+      if (productData.error === "OpenFoodFacts API rate limit reached") {
+        return res.status(429).json({
+          error: `${productData.error}. Please try again later.`,
+          products: [],
+        });
+      }
+      // If no product(s) data returned
+      if (Object.keys(productData).length === 0) {
+        return res.status(404).json({
+          error: `Products not found in OpenFoodFacts database`,
+          products: [],
+        });
+      }
+      return res.status(400).json({
+        error: `Products not found in OpenFoodFacts database`,
+        products: [],
+      });
+    }
+    // Successful response
+    return res.status(200).json(productData);
   } catch (error) {
     console.error("Error searching product:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    // Generic internal server error handler
+    return res.status(500).json({
+      error: "Internal server error. Please try again later.",
+      products: [],
+    });
   }
 }
 
