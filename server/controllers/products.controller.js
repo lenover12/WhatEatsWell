@@ -27,10 +27,10 @@ async function searchAndDisplayProducts(req, res) {
       );
     }
 
-    // // any errors that slipped through propagation
-    // if (productData.error) {
-    //   throw productData.error;
-    // }
+    // any errors that slipped through propagation
+    if (productData.error) {
+      throw productData.error;
+    }
 
     if (Object.keys(productData).length === 0) {
       throw new Error("Products not found in OpenFoodFacts database");
