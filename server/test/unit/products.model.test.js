@@ -90,13 +90,13 @@ test.serial(
     // Mock the axios.get method to return sampleProductData
     sinon.stub(axios, "get").resolves({ data: { product: sampleProductData } });
 
+    t.teardown(() => sinon.restore());
+
     const result = await ProductsModel.fetchOFFProductByBarcode(
       "9310072030821"
     );
 
     t.deepEqual(result, sampleProductData);
-
-    sinon.restore();
   }
 );
 
@@ -104,11 +104,13 @@ test.serial(
 test.serial("fetchOFFProductByBarcode handles no product data", async (t) => {
   sinon.stub(axios, "get").resolves({ data: {} });
 
-  const result = await ProductsModel.fetchOFFProductByBarcode("9310072030821");
+  t.teardown(() => sinon.restore());
 
-  t.deepEqual(result, {});
+  const error = await t.throwsAsync(() =>
+    ProductsModel.fetchOFFProductByBarcode("9310072030821")
+  );
 
-  sinon.restore();
+  t.is(error.message, "Products not found in OpenFoodFacts database");
 });
 
 // Tests for fetchOFFProductByBarcode handle API rate limit error
@@ -117,15 +119,13 @@ test.serial(
   async (t) => {
     sinon.stub(axios, "get").rejects({ response: { status: 500 } });
 
-    await t.throwsAsync(
-      () => ProductsModel.fetchOFFProductByBarcode("9310072030821"),
-      {
-        instanceOf: Error,
-        message: "OpenFoodFacts API rate limit reached",
-      }
+    t.teardown(() => sinon.restore());
+
+    const error = await t.throwsAsync(() =>
+      ProductsModel.fetchOFFProductByBarcode("9310072030821")
     );
 
-    sinon.restore();
+    t.is(error.message, "OpenFoodFacts API rate limit reached");
   }
 );
 
