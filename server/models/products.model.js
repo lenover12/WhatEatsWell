@@ -48,7 +48,7 @@ ProductModel.fetchOFFProductByBarcode = async function (barcode) {
 
     if (!response.data || !response.data.product) {
       // Return an empty object if no products found
-      return {};
+      throw new Error("Products not found in OpenFoodFacts database");
     }
 
     return response.data.product;
@@ -56,10 +56,8 @@ ProductModel.fetchOFFProductByBarcode = async function (barcode) {
     if (error.response && error.response.status === 500) {
       // Return specific error message for rate limit issues from OpenFoodFacts
       throw new Error("OpenFoodFacts API rate limit reached");
-    } else if (error.response && error.reponse.status === 404) {
-      // Return specific error message for product not found
-      throw new Error("Products not found in OpenFoodFacts database.");
-    } else throw error;
+      // Return product not found error
+    } else throw new Error("Products not found in OpenFoodFacts database");
   }
 };
 
