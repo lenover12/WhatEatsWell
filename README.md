@@ -9,15 +9,15 @@ This application was inspired by the need for a more convenient way to track nut
 <tr>
   <td>
 
-  [Features](#features)
-   · [Technologies](#tech-stack)
-   · [Installation](#installation)
-   · [Running the Application](#running-the-application)
-   · [Testing](#running-tests)
-   · [API Documentation](#api-documentation)
-   · [Contact](#contact)
-   · [License](#license)
-  
+[Features](#features)
+· [Technologies](#tech-stack)
+· [Installation](#installation)
+· [Running the Application](#running-the-application)
+· [Testing](#running-tests)
+· [API Documentation](#api-documentation)
+· [Contact](#contact)
+· [License](#license)
+
   </td>
 </tr>
 
@@ -31,7 +31,6 @@ This application was inspired by the need for a more convenient way to track nut
 - **Nutrition Information:** The app provides detailed nutrition information for each food item, helping users make informed dietary choices.
 - **Meal Planning (to-do):** Users will be able to create custom meals from their saved foods and get nutritional summaries.
 - **Easy Image Representation(to-do)** Nutrition categories (such as carbohydrates) will have image representation to showcase food nutrition facts into perspective
-
 
 ## Tech Stack
 
@@ -83,65 +82,68 @@ cd WhatEatsWell
 ### Backend
 
 1. Navigate to the `server` directory:
-    ```sh
-    cd server
-    ```
+
+   ```sh
+   cd server
+   ```
 
 2. Install the dependencies:
-    ```sh
-    npm install
-    ```
+
+   ```sh
+   npm install
+   ```
 
 3. Create a `.env` file in the `server` directory with the following variables:
-    ```env
-    BASE_DB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/retryWrites=true&w=majority&appName=Cluster0
-    PORT=404
-    JWT_SECRET=<your_jwt_secret>
-    ```
 
-    - `BASE_DB_URI`: Replace `<username>` and `<password>` with your MongoDB Atlas credentials.
-    - `PORT`: The port number the server will run on. Note that this value is currently hardcoded in the frontend.
-    - `JWT_SECRET`: A secret key for JWT authentication.
+   ```env
+   BASE_DB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/retryWrites=true&w=majority&appName=Cluster0
+   PORT=404
+   JWT_SECRET=<your_jwt_secret>
+   ```
 
-
+   - `BASE_DB_URI`: Replace `<username>` and `<password>` with your MongoDB Atlas credentials.
+   - `PORT`: The port number the server will run on. Note that this value is currently hardcoded in the frontend.
+   - `JWT_SECRET`: A secret key for JWT authentication.
 
 ### Frontend
 
 1. Navigate to the `client` directory:
-    ```sh
-    cd client
-    ```
+
+   ```sh
+   cd client
+   ```
 
 2. Install the dependencies:
-    ```sh
-    npm install
-    ```
+   ```sh
+   npm install
+   ```
 
 Note: The `PORT` value in the `.env` file is currently hardcoded in the frontend. If you change it in the `.env` file, you will also need to update it in `App.jsx`:
 
 ```jsx
 const port = 404;
 ```
+
 ## Running the Application
+
 (development)
 
 1. Navigate to the `server` directory:
-    ```sh
-    cd server
-    ```
-    
+   ```sh
+   cd server
+   ```
 2. Start the backend server:
-    ```sh
-    npm start
-    ```
+   ```sh
+   npm start
+   ```
 3. Navigate to the `client` directory:
-    ```sh
-    cd ../server
-    ```
- 4. Start the frontend development server:   
-    ```sh
-    npm run dev
-    ```
+   ```sh
+   cd ../server
+   ```
+4. Start the frontend development server:
+   ```sh
+   npm run dev
+   ```
 
 ## Running Tests
 
@@ -163,6 +165,7 @@ For details on the Open Food Facts API and how it's used in this project, refer 
 No authentication is required for READ operations, but you must include a User-Agent HTTP Header with the name of your app, version, system, and a URL (if any) to avoid being blocked.
 
 Example:
+
 ```
 User-Agent: MyAppsName - Web - Version 1.0 - www.mywebsite.com
 ```
@@ -176,15 +179,3 @@ Feel free to reach out via [Email](mailto:lennymcdonald247+whateatswell@hotmail.
 ## License
 
 This project is licensed under the GPL-3.0 License. See the LICENSE file for details.
-
-
-## Extra: Migration Script
-
-A `migrate.js` script is available to create the structure of the schemas in the MongoDB Atlas database. This script is not necessary for running the application, but it can be used to set up the database structure if needed.
-
-To run the migration script, navigate to the `server` directory and run:
-
-```sh
-cd server
-node migrate.js
-```
